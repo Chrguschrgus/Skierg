@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12212B">
+<title>SkiErg Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF2F4; --surface:#FFFFFF; --surface2:#E3E9ED; --text:#12212B; --muted:#5A6B76; --line:#D3DCE2;
+  --accent:#1E7A4A; --accent-ink:#FFFFFF;
+  --power:#C8312B; --pace:#1F5FBF; --spm:#6B3FA0; --hr:#B86E00; --warn:#B86E00;
+  --board:#12212B; --board-ink:#F2F6F8; --board-muted:#8FA3B0;
+  --num:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0E1A22; --surface:#14232D; --surface2:#1B2E3A; --text:#E8EFF3; --muted:#8FA3B0; --line:#23394A;
+    --accent:#3FBF7F; --accent-ink:#06170E;
+    --power:#FF6B5A; --pace:#6AA8FF; --spm:#B48CFF; --hr:#FFB547; --warn:#FFB547;
+    --board:#081117; --board-ink:#F2F6F8; --board-muted:#7F95A3;
+    color-scheme:dark;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h2,h3{margin:0 0 6px;line-height:1.2}
+h2{font-size:20px} h3{font-size:16px}
+p{margin:0 0 8px}
+.muted{color:var(--muted)} .small{font-size:13px}
+.hidden{display:none!important}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--pace);outline-offset:2px}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:10px 14px}
+.brand{flex:1;display:flex;align-items:center;gap:10px;min-width:0}
+.brand b{font-family:var(--num);font-size:22px;font-weight:700;letter-spacing:.01em}
+.pill{font-size:12px;padding:2px 9px;border-radius:99px;background:var(--surface2);color:var(--muted);font-weight:600;white-space:nowrap}
+.pill.on{background:var(--accent);color:var(--accent-ink)}
+.pill.demo,.pill.wait{background:var(--warn);color:#141414}
+
+.btn{background:var(--surface2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.on{background:var(--hr);color:#141414;border-color:transparent}
+.btn.danger{color:var(--power)}
+.btn:disabled{opacity:.5}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+main{padding:12px 12px calc(76px + env(safe-area-inset-bottom,0px));max-width:980px;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+
+/* Live: tidtavlan */
+.board{background:var(--board);color:var(--board-ink);border-radius:16px;padding:12px 16px 14px;margin-bottom:12px}
+.board-top{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--board-muted);font-size:14px;font-weight:600}
+.rec{display:inline-flex;align-items:center;gap:6px;color:#FF7A6E}
+.recdot{width:9px;height:9px;border-radius:50%;background:#FF5A4A;animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion: reduce){.recdot{animation:none}}
+.elapsed{font-family:var(--num);font-size:30px;font-weight:600;color:var(--board-ink);font-variant-numeric:tabular-nums}
+.pace-main{display:flex;align-items:baseline;gap:8px;margin-top:2px}
+.pace-main .v{font-family:var(--num);font-weight:700;font-size:clamp(84px,27vw,150px);line-height:.9;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:#8EC1FF}
+.pace-main .u{font-size:16px;color:var(--board-muted);font-weight:600}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);margin-top:10px;border-top:1px solid rgba(255,255,255,.12);padding-top:8px}
+.trio div{padding:0 4px}
+.trio div+div{border-left:1px solid rgba(255,255,255,.12);padding-left:12px}
+.trio .k{font-size:13px;color:var(--board-muted);font-weight:600}
+.trio .v{font-family:var(--num);font-weight:700;font-size:clamp(44px,13vw,72px);line-height:1;font-variant-numeric:tabular-nums}
+.trio .w .v{color:#FF8A7A} .trio .s .v{color:#C9A8FF} .trio .h .v{color:#FFC765}
+
+.stats{display:grid;grid-template-columns:repeat(2,1fr);background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.stats>div{padding:9px 12px;border-bottom:1px solid var(--line)}
+.stats>div:nth-child(odd){border-right:1px solid var(--line)}
+.stats .k{font-size:13px;color:var(--muted);font-weight:500}
+.stats .v{font-family:var(--num);font-size:26px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.stats .u{font-size:13px;color:var(--muted);margin-left:3px;font-family:var(--body)}
+@media (min-width:640px){.stats{grid-template-columns:repeat(5,1fr)} .stats>div{border-right:1px solid var(--line)}}
+
+canvas.chart{width:100%;height:170px;display:block}
+canvas.chart.short{height:140px}
+.legend{display:flex;gap:14px;font-size:13px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+/* Sammanfattning */
+.sumhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
+.badge{font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--surface2);color:var(--muted);margin-left:6px;vertical-align:middle}
+.kv{display:grid;grid-template-columns:repeat(2,1fr);gap:2px 14px;margin:6px 0 4px}
+@media (min-width:640px){.kv{grid-template-columns:repeat(4,1fr)}}
+.kv div{padding:5px 0;border-bottom:1px solid var(--line)}
+.kv .k{font-size:13px;color:var(--muted)}
+.kv .v{font-family:var(--num);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.insight{padding:10px 0;border-bottom:1px solid var(--line)}
+.insight:last-child{border-bottom:0}
+.insight .t{display:flex;justify-content:space-between;gap:10px;font-weight:600}
+.insight .t span:last-child{font-family:var(--num);font-size:20px;font-variant-numeric:tabular-nums}
+.insight p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{padding:6px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:13px}
+th:first-child,td:first-child{text-align:left}
+.err{color:var(--power)}
+input,select,textarea{width:100%;font:inherit;font-size:15px;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface2);color:var(--text)}
+textarea{min-height:64px;resize:vertical}
+label{display:block;font-size:14px;font-weight:600;margin:12px 0 4px}
+
+/* Historik */
+.hist-item{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;color:var(--text)}
+.hist-item .d{font-weight:600}
+.hist-item .m{font-size:14px;color:var(--muted)}
+.hist-item .r{text-align:right;font-family:var(--num);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+
+#log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.5;white-space:pre;overflow:auto;max-height:62vh;background:var(--surface2);padding:10px;border-radius:10px;margin-top:10px}
+
+nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:6}
+nav.bottom button{flex:1;background:none;border:0;color:var(--muted);font-size:14px;font-weight:600;padding:13px 4px;border-top:3px solid transparent}
+nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));background:var(--text);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s;z-index:20;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><b>SkiErg Live</b><span id="connPill" class="pill">Ej ansluten</span></div>
+  <button class="btn" id="btnHr" title="Anslut ett eget pulsband via Bluetooth">Pulsband</button>
+  <button class="btn primary" id="btnConnect">Anslut PM5</button>
+</header>
+
+<main>
+  <!-- LIVE -->
+  <section id="view-live">
+    <div id="welcome" class="card">
+      <h2>Kom igång</h2>
+      <p>Dra några tag så att PM5 vaknar, tryck på <b>Anslut PM5</b> och välj din monitor i listan. Inspelningen startar av sig själv när passet börjar och sparas när det avslutas på PM5.</p>
+      <p id="btWarn" class="err hidden">Den här webbläsaren saknar Web Bluetooth. Öppna sidan i Chrome på Android, via https.</p>
+      <div class="btnrow"><button class="btn" id="btnDemo">Kör demopass</button></div>
+      <p class="muted small" style="margin-top:8px">Demopasset simulerar en PM5 i fyrfaldig hastighet, åtta minuter på två. Bra för att prova dashboard, sammanfattning och export utan maskin.</p>
+    </div>
+
+    <div id="summaryLive"></div>
+
+    <div class="board">
+      <div class="board-top">
+        <span id="v-state">Ej ansluten</span>
+        <span id="recBadge" class="rec hidden"><span class="recdot"></span>Spelar in</span>
+        <span class="elapsed" id="v-elapsed">0:00.0</span>
+      </div>
+      <div class="pace-main"><span class="v" id="v-pace">–</span><span class="u">/500 m</span></div>
+      <div class="trio">
+        <div class="w"><div class="k">Watt</div><div class="v" id="v-power">–</div></div>
+        <div class="s"><div class="k">Takt</div><div class="v" id="v-spm">–</div></div>
+        <div class="h"><div class="k">Puls</div><div class="v" id="v-hr">–</div></div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div><div class="k">Distans</div><div class="v"><span id="v-dist">–</span><span class="u">m</span></div></div>
+      <div><div class="k">Snittempo</div><div class="v" id="v-avgpace">–</div></div>
+      <div><div class="k">Snittwatt</div><div class="v"><span id="v-avgpower">–</span><span class="u">W</span></div></div>
+      <div><div class="k">Kalorier</div><div class="v" id="v-cal">–</div></div>
+      <div><div class="k">Antal drag</div><div class="v" id="v-strokes">–</div></div>
+      <div><div class="k">Arbete per drag</div><div class="v"><span id="v-work">–</span><span class="u">J</span></div></div>
+      <div><div class="k">Meter per drag</div><div class="v" id="v-dps">–</div></div>
+      <div><div class="k">Toppkraft</div><div class="v"><span id="v-peak">–</span><span class="u">lbf</span></div></div>
+      <div><div class="k">Drag : återhämtning</div><div class="v" id="v-ratio">–</div></div>
+      <div><div class="k">Dragfaktor</div><div class="v" id="v-drag">–</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Senaste tre minuterna</h3>
+      <canvas id="chartLive" class="chart"></canvas>
+      <div class="legend"><span><i style="background:var(--power)"></i>Watt</span><span><i style="background:var(--hr)"></i>Puls</span></div>
+    </div>
+    <div class="card">
+      <h3>Kraftkurva, senaste draget</h3>
+      <canvas id="chartForce" class="chart short"></canvas>
+    </div>
+    <button class="btn danger hidden" id="btnStop">Avsluta och spara passet</button>
+  </section>
+
+  <!-- HISTORIK -->
+  <section id="view-history" class="hidden">
+    <div id="histDetail"></div>
+    <div id="histList"></div>
+  </section>
+
+  <!-- LOGG -->
+  <section id="view-log" class="hidden">
+    <div class="card">
+      <h2>Bluetooth-logg</h2>
+      <p class="muted small">Rådata från PM5 i hex, senaste 400 raderna. Kopiera och skicka hit om något värde ser konstigt ut.</p>
+      <div class="btnrow">
+        <button class="btn" id="btnLogPause">Pausa</button>
+        <button class="btn" id="btnLogClear">Rensa</button>
+        <button class="btn" id="btnLogCopy">Kopiera</button>
+      </div>
+      <div id="log"></div>
+    </div>
+  </section>
+
+  <!-- INSTÄLLNINGAR -->
+  <section id="view-settings" class="hidden">
+    <div class="card">
+      <h2>Om dig</h2>
+      <p class="muted small">Följer med i analysfilerna så att Claude kan bedöma intensitet och sätta passen i sammanhang.</p>
+      <label for="setMaxHr">Maxpuls (valfritt)</label>
+      <input id="setMaxHr" type="number" inputmode="numeric" min="120" max="230" placeholder="t.ex. 188">
+      <label for="setAbout">Bakgrund och mål (valfritt)</label>
+      <textarea id="setAbout" placeholder="t.ex. Tränar inför Vasaloppet, 4–5 pass i veckan varav 2 på SkiErg"></textarea>
+    </div>
+    <div class="card">
+      <h2>PM5</h2>
+      <label for="setRate">Uppdateringsfrekvens</label>
+      <select id="setRate">
+        <option value="0">1 gång per sekund</option>
+        <option value="1">Varje 500 ms (PM5:s standard)</option>
+        <option value="2">Varje 250 ms</option>
+        <option value="3">Varje 100 ms</option>
+      </select>
+      <p class="muted small" style="margin-top:6px">Gäller från nästa anslutning.</p>
+    </div>
+    <div class="card">
+      <h2>Data</h2>
+      <p class="muted small">Alla pass sparas lokalt i webbläsaren. "Historik till Claude" ger en fil med alla pass för analys av utvecklingen över tid. Ta en säkerhetskopia då och då.</p>
+      <div class="btnrow">
+        <button class="btn primary" id="btnExportHist">Historik till Claude</button>
+        <button class="btn" id="btnExportAll">Säkerhetskopia (JSON)</button>
+        <button class="btn" id="btnImport">Importera</button>
+        <button class="btn danger" id="btnWipe">Radera alla pass</button>
+      </div>
+      <input type="file" id="fileImport" accept="application/json,.json" class="hidden">
+    </div>
+  </section>
+</main>
+
+<nav class="bottom">
+  <button data-view="live" class="active">Live</button>
+  <button data-view="history">Historik</button>
+  <button data-view="log">Logg</button>
+  <button data-view="settings">Inställningar</button>
+</nav>
+<div id="toast" class="toast"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   PM5 Bluetooth-gränssnitt (Concept2 PM5 Bluetooth Smart Interface Definition)
+   Bas-UUID: CE06xxxx-43E5-11E4-916C-0800200C9A66, alla fält little-endian
+   ============================================================ */
+const C2 = n => `ce06${n.toString(16).padStart(4,'0')}-43e5-11e4-916c-0800200c9a66`;
+const SVC = { info: C2(0x10), control: C2(0x20), rowing: C2(0x30) };
+const CH = {
+  general: C2(0x31), add1: C2(0x32), add2: C2(0x33), rate: C2(0x34),
+  stroke: C2(0x35), addStroke: C2(0x36), split: C2(0x37), addSplit: C2(0x38),
+  summary: C2(0x39), addSummary: C2(0x3A), force: C2(0x3D),
+  serial: C2(0x12), fw: C2(0x14)
+};
+const UUID_KEY = Object.fromEntries(Object.entries(CH).map(([k,v]) => [v,k]));
+const NOTIFY = ['general','add1','add2','stroke','addStroke','split','addSplit','summary','addSummary','force'];
+const WS = ['Väntar på start','Pågår','Nedräkning','Vila','Intervall, tid','Intervall, distans','Vila, snart arbete','Vila, snart arbete','Arbete, snart vila','Arbete, snart vila','Avslutat','Avbrutet','Loggat','Återställt'];
+const ACTIVE_STATES = new Set([1,2,3,4,5,6,7,8,9]);
+
+const u8  = (d,o) => d.getUint8(o);
+const u16 = (d,o) => d.getUint16(o,true);
+const u24 = (d,o) => d.getUint8(o) | (d.getUint8(o+1)<<8) | (d.getUint8(o+2)<<16);
+const hrv = v => (v===0 || v===255) ? null : v;
+
+const P = {
+  general: d => ({ elapsed:u24(d,0)/100, distance:u24(d,3)/10, workoutType:u8(d,6), intervalType:u8(d,7),
+    workoutState:u8(d,8), rowingState:u8(d,9), strokeState:u8(d,10), totalWorkDistance:u24(d,11),
+    workoutDuration:u24(d,14), durationType:u8(d,17), dragFactor:u8(d,18) }),
+  add1: d => ({ elapsed:u24(d,0)/100, speed:u16(d,3)/1000, spm:u8(d,5), hr:hrv(u8(d,6)), pace:u16(d,7)/100,
+    avgPace:u16(d,9)/100, restDistance:u16(d,11), restTime:u24(d,13)/100, machine: d.byteLength>=17 ? u8(d,16) : null }),
+  add2: d => ({ elapsed:u24(d,0)/100, intervalCount:u8(d,3), avgPower:u16(d,4), calories:u16(d,6),
+    splitAvgPace:u16(d,8)/100, splitAvgPower:u16(d,10), splitAvgCal:u16(d,12), lastSplitTime:u24(d,14)/10, lastSplitDistance:u24(d,17) }),
+  stroke: d => ({ elapsed:u24(d,0)/100, distance:u24(d,3)/10, driveLength:u8(d,6)/100, driveTime:u8(d,7)/100,
+    recoveryTime:u16(d,8)/100, strokeDistance:u16(d,10)/100, peakForce:u16(d,12)/10, avgForce:u16(d,14)/10,
+    work:u16(d,16)/10, strokeCount:u16(d,18) }),
+  addStroke: d => ({ elapsed:u24(d,0)/100, power:u16(d,3), strokeCal:u16(d,5), strokeCount:u16(d,7), projTime:u24(d,9), projDist:u24(d,12) }),
+  split: d => ({ elapsed:u24(d,0)/100, distance:u24(d,3)/10, splitTime:u24(d,6)/10, splitDistance:u24(d,9),
+    restTime:u16(d,12), restDistance:u16(d,14), splitType:u8(d,16), splitNumber:u8(d,17) }),
+  addSplit: d => ({ elapsed:u24(d,0)/100, spm:u8(d,3), workHr:hrv(u8(d,4)), restHr:hrv(u8(d,5)), avgPace:u16(d,6)/10,
+    calories:u16(d,8), avgCalHr:u16(d,10), speed:u16(d,12)/1000, power:u16(d,14), dragFactor:u8(d,16), splitNumber:u8(d,17) }),
+  summary: d => ({ elapsed:u24(d,4)/100, distance:u24(d,7)/10, avgSpm:u8(d,10), endHr:hrv(u8(d,11)), avgHr:hrv(u8(d,12)),
+    minHr:hrv(u8(d,13)), maxHr:hrv(u8(d,14)), dragFactor:u8(d,15), recoveryHr:hrv(u8(d,16)), workoutType:u8(d,17), avgPace:u16(d,18)/10 }),
+  addSummary: d => ({ splitType:u8(d,4), splitSize:u16(d,5), splitCount:u8(d,7), calories:u16(d,8), watts:u16(d,10),
+    restDistance:u24(d,12), restTime:u16(d,15)/10, avgCalHr:u16(d,17) })
+};
+
+/* ============================================================ Hjälpfunktioner */
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mean = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+const std = a => { const m = mean(a); return a.length>1 ? Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1)) : 0; };
+const r1 = v => v==null || !isFinite(v) ? null : Math.round(v*10)/10;
+const r2 = v => v==null || !isFinite(v) ? null : Math.round(v*100)/100;
+const pad = n => String(n).padStart(2,'0');
+function fmtTime(sec){
+  if (sec==null || !isFinite(sec)) return '–';
+  sec = Math.max(0, sec);
+  const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), s = Math.floor(sec%60), t = Math.floor(sec*10)%10;
+  return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}.${t}`;
+}
+function fmtPace(sec){
+  if (!sec || !isFinite(sec) || sec >= 600) return '–';
+  const tenths = Math.round(sec*10), m = Math.floor(tenths/600), s = (tenths%600)/10;
+  return `${m}:${s.toFixed(1).padStart(4,'0')}`;
+}
+const fmtDate = iso => new Date(iso).toLocaleString('sv-SE', { dateStyle:'medium', timeStyle:'short' });
+const signed = (v, dec=1) => v==null ? '–' : `${v>0?'+':v<0?'−':''}${Math.abs(v).toFixed(dec)} %`;
+const machineName = c => c==null ? 'SkiErg' : c>=192 ? 'BikeErg' : c>=128 ? 'SkiErg' : 'RowErg';
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'), 2600); }
+function download(name, text, type){
+  const blob = new Blob([text], { type });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function resample(arr, n){
+  if (arr.length < 2) return arr.slice();
+  const out = [];
+  for (let i=0;i<n;i++){ const x=i*(arr.length-1)/(n-1), i0=Math.floor(x), i1=Math.min(arr.length-1,i0+1), f=x-i0; out.push(Math.round(arr[i0]*(1-f)+arr[i1]*f)); }
+  return out;
+}
+function smooth(a, k){
+  const h = Math.floor(k/2);
+  return a.map((v,i) => { if (v==null) return null; let s=0,n=0; for (let j=Math.max(0,i-h); j<=Math.min(a.length-1,i+h); j++){ if (a[j]!=null){ s+=a[j]; n++; } } return n ? s/n : null; });
+}
+
+/* ============================================================ Inställningar */
+const DEFAULTS = { rate:2, maxHr:'', about:'' };
+let settings = (() => { try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('skierg.settings') || '{}') }; } catch(e) { return { ...DEFAULTS }; } })();
+// Rensa bort API-nyckel från tidigare version
+if ('apiKey' in settings || 'model' in settings) { delete settings.apiKey; delete settings.model; try { localStorage.setItem('skierg.settings', JSON.stringify(settings)); } catch(e) {} }
+function saveSettings(){ try { localStorage.setItem('skierg.settings', JSON.stringify(settings)); } catch(e) { toast('Kunde inte spara inställningarna'); } }
+
+/* ============================================================ Databas (IndexedDB) */
+const reqP = r => new Promise((res,rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const DB = {
+  db:null, mem:new Map(),
+  async open(){
+    try {
+      this.db = await new Promise((res,rej) => {
+        const r = indexedDB.open('skierg-live', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('sessions', { keyPath:'id' });
+        r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+      });
+    } catch(e) { this.db = null; toast('Lokal databas otillgänglig, pass sparas bara tillfälligt'); }
+  },
+  store(mode){ return this.db.transaction('sessions', mode).objectStore('sessions'); },
+  async put(s){ if (!this.db) { this.mem.set(s.id, s); return; } await reqP(this.store('readwrite').put(s)); },
+  async all(){ if (!this.db) return [...this.mem.values()]; return await reqP(this.store('readonly').getAll()); },
+  async get(id){ if (!this.db) return this.mem.get(id); return await reqP(this.store('readonly').get(id)); },
+  async del(id){ if (!this.db) { this.mem.delete(id); return; } await reqP(this.store('readwrite').delete(id)); },
+  async clear(){ if (!this.db) { this.mem.clear(); return; } await reqP(this.store('readwrite').clear()); }
+};
+
+/* ============================================================ Livestatus */
+const live = { elapsed:0, distance:null, workoutState:null, curve:null };
+const liveBuf = [];
+const hrs = { device:null, v:null, at:0 };
+function getHr(){ return (hrs.v && Date.now()-hrs.at < 5000) ? hrs.v : (live.hrPM ?? null); }
+
+let connState = 'none';
+function setConn(state){
+  connState = state;
+  const pill = $('#connPill');
+  const map = { none:['Ej ansluten',''], connecting:['Ansluter…','wait'], reconnecting:['Återansluter…','wait'], pm5:['Ansluten','on'], demo:['Demo','demo'] };
+  const [txt, cls] = map[state] || map.none;
+  pill.textContent = txt; pill.className = 'pill ' + cls;
+  $('#btnConnect').textContent = state==='pm5' || state==='reconnecting' ? 'Koppla från' : 'Anslut PM5';
+  $('#welcome').classList.toggle('hidden', state !== 'none');
+  if (state === 'none') releaseWakeLock(); else requestWakeLock();
+  markDirty();
+}
+
+/* ============================================================ Rå logg */
+const rawLog = []; let logPaused = false, logTimer = null;
+function pushLog(line){ rawLog.push(line); if (rawLog.length > 400) rawLog.shift(); if (currentView==='log' && !logTimer) logTimer = setTimeout(()=>{ logTimer=null; renderLog(); }, 300); }
+function logRaw(name, dv){
+  if (logPaused) return;
+  const hex = [...new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength)].map(b=>b.toString(16).padStart(2,'0')).join(' ');
+  pushLog(`${new Date().toISOString().slice(11,23)} ${String(name).padEnd(10)} ${hex}`);
+}
+function logMsg(msg){ pushLog(`${new Date().toISOString().slice(11,23)} ** ${msg}`); }
+function renderLog(){ const el=$('#log'); el.textContent = rawLog.join('\n'); el.scrollTop = el.scrollHeight; }
+
+/* ============================================================ Datahantering */
+const fc = { buf:[], got:0, at:0 };
+function dispatch(uuid, dv){
+  const key = UUID_KEY[uuid] || uuid;
+  logRaw(key, dv);
+  try {
+    switch (key) {
+      case 'general': {
+        const g = P.general(dv);
+        Object.assign(live, { elapsed:g.elapsed, distance:g.distance, workoutState:g.workoutState, rowingState:g.rowingState,
+          strokeState:g.strokeState, workoutType:g.workoutType, dragFactor:g.dragFactor });
+        checkRecording(); maybeSample(); break;
+      }
+      case 'add1': { const a = P.add1(dv); Object.assign(live, { pace:a.pace, avgPace:a.avgPace, spm:a.spm, hrPM:a.hr, speed:a.speed }); if (a.machine!=null) live.machine = a.machine; break; }
+      case 'add2': { const a = P.add2(dv); live.avgPower = a.avgPower; live.calories = a.calories; break; }
+      case 'stroke': {
+        const s = P.stroke(dv);
+        Object.assign(live, { work:s.work, peakForce:s.peakForce, avgForce:s.avgForce, driveLength:s.driveLength, driveTime:s.driveTime,
+          recoveryTime:s.recoveryTime, strokeCount:s.strokeCount, strokeDistance:s.strokeDistance });
+        if (rec) recStroke(s); break;
+      }
+      case 'addStroke': { const s = P.addStroke(dv); live.power = s.power; live.strokeCount = s.strokeCount; if (rec) recStrokePower(s); break; }
+      case 'split': { const s = P.split(dv); if (rec) mergeSplit(s.splitNumber, { time:s.splitTime, dist:s.splitDistance, restTime:s.restTime }); break; }
+      case 'addSplit': { const s = P.addSplit(dv); if (rec) mergeSplit(s.splitNumber, { spm:s.spm, hr:s.workHr, pace:s.avgPace, power:s.power, cal:s.calories }); break; }
+      case 'summary': { const s = P.summary(dv); logMsg('Sammanfattning från PM5 mottagen'); if (rec) { rec.pm.summary = s; scheduleFinalize(); } break; }
+      case 'addSummary': { const s = P.addSummary(dv); if (rec) rec.pm.addSummary = s; break; }
+      case 'force': onForce(dv); break;
+    }
+  } catch (e) { logMsg(`Tolkningsfel ${key} (${dv.byteLength} byte): ${e.message}`); }
+  markDirty();
+}
+function onForce(d){
+  const now = Date.now();
+  if (now - fc.at > 1500) { fc.buf = []; fc.got = 0; }
+  fc.at = now;
+  const b0 = u8(d,0), total = b0 >> 4, words = b0 & 0x0f;
+  for (let i=0; i<words && 2+i*2+1 < d.byteLength; i++) fc.buf.push(u16(d, 2+i*2));
+  fc.got++;
+  if (total === 0 || fc.got >= total) { finishCurve(fc.buf); fc.buf = []; fc.got = 0; }
+}
+function finishCurve(arr){
+  if (arr.length < 4) return;
+  live.curve = arr.slice();
+  if (rec) rec.curves.push(resample(arr, 24));
+  if (currentView === 'live') drawForce();
+}
+
+/* ============================================================ Inspelning av pass */
+let rec = null, finTimer = null;
+function checkRecording(){
+  const ws = live.workoutState;
+  if (!rec) {
+    if (ACTIVE_STATES.has(ws) && live.elapsed > 0) startSession();
+    return;
+  }
+  if (finTimer) return;
+  if (live.elapsed + 2 < rec.lastElapsed) { finalize('PM5 nollställdes'); return; }
+  if (ws===10 || ws===11 || ws===12 || ws===13 || (ws===0 && rec.lastElapsed > 0)) scheduleFinalize();
+}
+function startSession(){
+  rec = { id:'s'+Date.now(), start:new Date().toISOString(), source: connState==='demo' ? 'demo' : 'pm5',
+    machine: machineName(live.machine), workoutType: live.workoutType,
+    samples:[], strokes:[], splits:[], curves:[], pm:{}, note:'',
+    lastElapsed: live.elapsed, lastChange: Date.now(), lastSampleT: -1 };
+  $('#summaryLive').innerHTML = '';
+  logMsg('Pass startat'); toast('Passet har startat, spelar in');
+  updateRecUI();
+}
+function maybeSample(){
+  if (!rec || finTimer) return;
+  if (live.elapsed !== rec.lastElapsed) { rec.lastElapsed = live.elapsed; rec.lastChange = Date.now(); }
+  if (live.elapsed - rec.lastSampleT >= 1) {
+    rec.lastSampleT = live.elapsed;
+    rec.samples.push({ t:+live.elapsed.toFixed(2), d:+(live.distance||0).toFixed(1), p:live.power||0, pace:live.pace||0,
+      spm:live.spm||0, hr:getHr(), cal:live.calories||0 });
+  }
+}
+function recStroke(s){
+  const last = rec.strokes[rec.strokes.length-1];
+  const o = { n:s.strokeCount, t:s.elapsed, work:s.work, pf:s.peakForce, af:s.avgForce, dl:s.driveLength, dt:s.driveTime, rt:s.recoveryTime, sd:s.strokeDistance };
+  if (last && last.n === s.strokeCount) Object.assign(last, o); else rec.strokes.push({ ...o, p:null });
+}
+function recStrokePower(s){
+  for (let i=rec.strokes.length-1; i>=Math.max(0, rec.strokes.length-3); i--) {
+    if (rec.strokes[i].n === s.strokeCount) { rec.strokes[i].p = s.power; return; }
+  }
+  rec.strokes.push({ n:s.strokeCount, t:s.elapsed, p:s.power });
+}
+function mergeSplit(n, obj){
+  let sp = rec.splits.find(x => x.n === n);
+  if (!sp) { sp = { n }; rec.splits.push(sp); }
+  Object.assign(sp, obj);
+}
+function scheduleFinalize(){ if (rec && !finTimer) finTimer = setTimeout(() => finalize('avslutat på PM5'), 2500); }
+async function finalize(reason){
+  if (!rec) return;
+  if (finTimer) { clearTimeout(finTimer); finTimer = null; }
+  const s = rec; rec = null;
+  delete s.lastElapsed; delete s.lastChange; delete s.lastSampleT;
+  updateRecUI();
+  if (s.samples.length < 15) { try { await DB.del(s.id); } catch(e) {} toast('Passet var för kort för att sparas'); return; }
+  s.end = new Date().toISOString(); s.endReason = reason;
+  if (s.source !== 'demo' && live.machine != null) s.machine = machineName(live.machine);
+  s.summary = computeSummary(s);
+  try { await DB.put(s); toast('Passet är sparat'); } catch(e) { toast('Kunde inte spara passet: ' + e.message); }
+  logMsg('Pass sparat (' + reason + ')');
+  showLiveSummary(s);
+}
+function updateRecUI(){
+  $('#recBadge').classList.toggle('hidden', !rec);
+  $('#btnStop').classList.toggle('hidden', !rec);
+}
+// Autospar var 30:e sekund så att ett pass överlever om fliken laddas om
+setInterval(() => { if (rec && !finTimer) DB.put({ ...rec, draft:true }).catch(()=>{}); }, 30000);
+async function recoverDrafts(){
+  let all = [];
+  try { all = await DB.all(); } catch(e) { return; }
+  for (const s of all) {
+    if (!s.draft) continue;
+    delete s.draft; delete s.lastElapsed; delete s.lastChange; delete s.lastSampleT;
+    if (s.samples.length < 15) { await DB.del(s.id); continue; }
+    s.endReason = 'återställt efter avbrott'; s.end = s.end || new Date().toISOString();
+    s.summary = computeSummary(s); await DB.put(s);
+    toast('Ett avbrutet pass återställdes och finns i historiken');
+  }
+}
+
+/* ============================================================ Analys */
+function bestWindow(sm, w){
+  let best = null, j = 0, sum = 0;
+  for (let i=0; i<sm.length; i++) {
+    while (j < sm.length && sm[j].t - sm[i].t < w) { sum += sm[j].p; j++; }
+    const n = j - i;
+    if (n > 0 && sm[j-1].t - sm[i].t >= w*0.9) { const m = sum/n; if (best==null || m > best) best = m; }
+    sum -= sm[i].p;
+  }
+  return best==null ? null : Math.round(best);
+}
+function curveStats(curves){
+  if (!curves || curves.length < 9) return null;
+  const third = Math.floor(curves.length/3);
+  const avg = set => set[0].map((_,i) => Math.round(mean(set.map(c => c[i] || 0))));
+  const early = avg(curves.slice(0, third)), late = avg(curves.slice(-third));
+  const peak = c => Math.max(...c), pos = c => c.indexOf(peak(c)) / (c.length-1);
+  return { early, late, peakEarly:peak(early), peakLate:peak(late), posEarly:pos(early), posLate:pos(late) };
+}
+function computeSummary(s){
+  const sm = s.samples, last = sm[sm.length-1] || {};
+  const pmS = s.pm.summary, pmA = s.pm.addSummary;
+  const duration = pmS && pmS.elapsed > 0 ? pmS.elapsed : (last.t || 0);
+  const distance = pmS && pmS.distance > 0 ? pmS.distance : (last.d || 0);
+  const pw = sm.map(x=>x.p).filter(v=>v>0);
+  const hrA = sm.map(x=>x.hr).filter(v=>v>0);
+  const tMid = (last.t || 0) / 2;
+  const h1 = sm.filter(x=>x.t <= tMid), h2 = sm.filter(x=>x.t > tMid);
+  const p1 = mean(h1.map(x=>x.p).filter(v=>v>0)), p2 = mean(h2.map(x=>x.p).filter(v=>v>0));
+  const eff = arr => { const a = arr.filter(x=>x.p>0 && x.hr>0); return a.length < 20 ? null : mean(a.map(x=>x.p)) / mean(a.map(x=>x.hr)); };
+  const e1 = eff(h1), e2 = eff(h2);
+  const sp = s.strokes.map(x=>x.p).filter(v=>v>0);
+  const strokes = s.strokes.length ? (s.strokes[s.strokes.length-1].n || s.strokes.length) : null;
+  const buckets = {};
+  for (const x of sm) { const k = Math.floor(x.t/60); (buckets[k] ||= []).push(x); }
+  const perMin = Object.keys(buckets).map(Number).sort((a,b)=>a-b).map(k => {
+    const b = buckets[k];
+    const m = arr => { const v = arr.filter(z=>z>0); return v.length ? Math.round(mean(v)) : null; };
+    const pc = b.map(z=>z.pace).filter(z=>z>0 && z<600);
+    return { min:k+1, p:m(b.map(z=>z.p)), spm:m(b.map(z=>z.spm)), hr:m(b.map(z=>z.hr||0)), pace: pc.length ? r1(mean(pc)) : null };
+  });
+  return {
+    duration, distance,
+    avgPace: pmS && pmS.avgPace > 0 ? pmS.avgPace : (distance > 0 ? duration/distance*500 : null),
+    avgPower: pmA && pmA.watts > 0 ? pmA.watts : (pw.length ? Math.round(mean(pw)) : null),
+    avgSpm: mean(sm.map(x=>x.spm).filter(v=>v>0)),
+    avgHr: hrA.length ? mean(hrA) : (pmS && pmS.avgHr) || null,
+    maxHr: hrA.length ? Math.max(...hrA) : (pmS && pmS.maxHr) || null,
+    recoveryHr: pmS && pmS.recoveryHr || null,
+    strokes, dps: strokes ? distance/strokes : null,
+    avgWork: mean(s.strokes.map(x=>x.work).filter(v=>v>0)),
+    calories: (pmA && pmA.calories) || last.cal || null,
+    fade: p1 && p2 ? (p2-p1)/p1*100 : null,
+    decoupling: e1 && e2 ? (e1-e2)/e1*100 : null,
+    cv: sp.length > 10 ? std(sp)/mean(sp)*100 : null,
+    best60: bestWindow(sm, 60),
+    perMin, curve: curveStats(s.curves)
+  };
+}
+function insights(m){
+  const out = [];
+  if (m.fade != null) {
+    const f = m.fade;
+    out.push({ t:'Effekt, andra halvan mot första', v:signed(f),
+      p: f < -5 ? 'Effekten sjönk tydligt mot slutet. Var passet tänkt jämnt startade du troligen för hårt.'
+       : f < -2 ? 'Lätt avtagande effekt, normalt för ett jämnt pass som tar på krafterna.'
+       : f <= 2 ? 'Mycket jämn effekt mellan halvorna.'
+       : 'Starkare andra halva, alltså en negativ split.' });
+  }
+  if (m.decoupling != null) {
+    const d = m.decoupling;
+    let p = d < 5 ? 'Puls och effekt följdes åt. Tyder på god aerob stabilitet vid den här intensiteten.'
+          : d < 10 ? 'Måttlig pulsdrift. Vanligt nära tröskel eller på längre pass.'
+          : 'Stor pulsdrift. Pulsen steg mer än effekten, så intensiteten låg troligen över aerob tröskel, eller så spelade trötthet och värme in.';
+    if (m.duration < 1200) p += ' Passet var kortare än 20 minuter, så tolka försiktigt.';
+    out.push({ t:'Pulsdrift (decoupling)', v:signed(d), p });
+  }
+  if (m.cv != null) {
+    out.push({ t:'Effektvariation mellan drag', v:`${m.cv.toFixed(1)} %`,
+      p: m.cv < 8 ? 'Jämna drag med stabil rytm.' : m.cv < 15 ? 'Viss variation mellan dragen.' : 'Stor variation, antingen intervaller eller ojämn rytm och teknik.' });
+  }
+  if (m.curve) {
+    const c = m.curve, dp = (c.peakLate - c.peakEarly) / c.peakEarly * 100, dpos = c.posLate - c.posEarly;
+    let p = [];
+    if (dp < -8) p.push(`Toppkraften sjönk ${Math.abs(dp).toFixed(0)} % från första till sista tredjedelen.`);
+    if (dpos > 0.06) p.push('Toppen kom senare i draget mot slutet, vilket kan tyda på att bål och lats tröttnar och armarna tar över mer.');
+    if (!p.length) p.push('Kraftkurvans form höll sig stabil genom passet.');
+    out.push({ t:'Kraftkurva, början mot slut', v:signed(dp,0), p:p.join(' ') });
+  }
+  return out;
+}
+
+/* ============================================================ Diagram */
+function drawChart(canvas, series, opt={}){
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+  if (!W || !H) return;
+  canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
+  const ctx = canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const padL = 38, padR = 38, padT = 8, padB = 18, pw = W-padL-padR, ph = H-padT-padB;
+  const muted = cssVar('--muted');
+  ctx.strokeStyle = cssVar('--line'); ctx.lineWidth = 1;
+  for (let i=0; i<=3; i++) { const y = Math.round(padT + ph*i/3) + .5; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke(); }
+  let xmin = Infinity, xmax = -Infinity;
+  series.forEach(s => s.pts.forEach(p => { if (p[1]!=null && isFinite(p[1])) { xmin = Math.min(xmin,p[0]); xmax = Math.max(xmax,p[0]); } }));
+  if (opt.xmin != null) xmin = opt.xmin;
+  if (opt.xmax != null) xmax = opt.xmax;
+  ctx.font = '12px Barlow, system-ui, sans-serif';
+  if (!isFinite(xmin) || !isFinite(xmax) || xmax <= xmin) {
+    ctx.fillStyle = muted; ctx.textAlign = 'center'; ctx.fillText(opt.empty || 'Ingen data än', W/2, padT+ph/2); ctx.textAlign = 'left'; return;
+  }
+  series.forEach((s, si) => {
+    const ys = s.pts.map(p=>p[1]).filter(v=>v!=null && isFinite(v));
+    if (!ys.length) return;
+    let ymin = s.min != null ? s.min : Math.min(...ys), ymax = s.max != null ? s.max : Math.max(...ys);
+    if (ymax - ymin < 1e-9) { ymax += 1; ymin -= 1; }
+    const py = (ymax-ymin)*0.08; if (s.min == null) ymin -= py; if (s.max == null) ymax += py;
+    const X = x => padL + (x-xmin)/(xmax-xmin)*pw;
+    const Y = y => { let f = (y-ymin)/(ymax-ymin); if (s.invert) f = 1-f; return padT + ph*(1-f); };
+    ctx.strokeStyle = s.color; ctx.lineWidth = s.width || 2; ctx.lineJoin = 'round'; ctx.setLineDash(s.dash || []);
+    ctx.beginPath(); let pen = false;
+    s.pts.forEach(p => { if (p[1]==null || !isFinite(p[1])) { pen = false; return; } const x = X(p[0]), y = Y(p[1]); if (!pen) { ctx.moveTo(x,y); pen = true; } else ctx.lineTo(x,y); });
+    ctx.stroke(); ctx.setLineDash([]);
+    if (si < 2 && s.label !== false) {
+      const fmt = s.fmt || (v => String(Math.round(v)));
+      ctx.fillStyle = s.color; ctx.textAlign = si===0 ? 'right' : 'left';
+      const xx = si===0 ? padL-5 : W-padR+5;
+      ctx.fillText(fmt(s.invert ? ymin : ymax), xx, padT+10);
+      ctx.fillText(fmt(s.invert ? ymax : ymin), xx, padT+ph);
+    }
+  });
+  if (opt.xfmt) {
+    ctx.fillStyle = muted; ctx.textAlign = 'left'; ctx.fillText(opt.xfmt(xmin), padL, H-3);
+    ctx.textAlign = 'right'; ctx.fillText(opt.xfmt(xmax), W-padR, H-3);
+  }
+  ctx.textAlign = 'left';
+}
+function drawLiveChart(){
+  const now = Date.now()/1000;
+  drawChart($('#chartLive'), [
+    { pts: liveBuf.map(x => [x.t-now, x.p || null]), color: cssVar('--power') },
+    { pts: liveBuf.map(x => [x.t-now, x.hr || null]), color: cssVar('--hr') }
+  ], { xmin:-180, xmax:0, xfmt: v => v >= 0 ? 'nu' : `−${Math.round(-v/60)} min`, empty:'Väntar på data' });
+}
+function drawForce(){
+  const c = live.curve;
+  drawChart($('#chartForce'), c ? [{ pts: c.map((v,i)=>[i/(c.length-1), v]), color: cssVar('--pace'), min:0, width:3 }] : [],
+    { xfmt: v => v === 0 ? 'dragets start' : 'slut', empty:'Kurvan visas efter första draget' });
+}
+
+/* ============================================================ Rendering */
+let dirty = false;
+function markDirty(){ if (!dirty) { dirty = true; setTimeout(() => { dirty = false; if (currentView==='live') renderLive(); }, 200); } }
+function renderLive(){
+  const set = (id, v) => { const el = document.getElementById(id); if (el && el.textContent !== v) el.textContent = v; };
+  set('v-elapsed', fmtTime(live.elapsed));
+  set('v-state', connState==='none' ? 'Ej ansluten' : (WS[live.workoutState] ?? 'Ansluten'));
+  set('v-pace', live.pace ? fmtPace(live.pace) : '–');
+  set('v-power', live.power ? String(live.power) : '–');
+  set('v-spm', live.spm ? String(live.spm) : '–');
+  const hr = getHr(); set('v-hr', hr ? String(hr) : '–');
+  set('v-dist', live.distance != null ? String(Math.round(live.distance)) : '–');
+  set('v-avgpace', live.avgPace ? fmtPace(live.avgPace) : '–');
+  set('v-avgpower', live.avgPower ? String(live.avgPower) : '–');
+  set('v-cal', live.calories != null ? String(live.calories) : '–');
+  set('v-strokes', live.strokeCount != null ? String(live.strokeCount) : '–');
+  set('v-work', live.work ? String(Math.round(live.work)) : '–');
+  set('v-dps', live.strokeDistance ? live.strokeDistance.toFixed(2) : '–');
+  set('v-peak', live.peakForce ? live.peakForce.toFixed(0) : '–');
+  set('v-ratio', live.driveTime && live.recoveryTime ? `1 : ${(live.recoveryTime/live.driveTime).toFixed(1)}` : '–');
+  set('v-drag', live.dragFactor ? String(live.dragFactor) : '–');
+}
+
+function summaryHTML(s, ctx){
+  const m = s.summary;
+  const kv = [
+    ['Tid', fmtTime(m.duration)], ['Distans', `${Math.round(m.distance)} m`], ['Snittempo', `${fmtPace(m.avgPace)} /500 m`],
+    ['Snittwatt', m.avgPower ? `${m.avgPower} W` : '–'], ['Takt', m.avgSpm ? `${m.avgSpm.toFixed(1)} spm` : '–'],
+    ['Puls, snitt och max', m.avgHr ? `${Math.round(m.avgHr)} / ${m.maxHr}` : '–'], ['Bästa 60 s', m.best60 ? `${m.best60} W` : '–'],
+    ['Antal drag', m.strokes ?? '–'], ['Meter per drag', m.dps ? m.dps.toFixed(2) : '–'], ['Arbete per drag', m.avgWork ? `${Math.round(m.avgWork)} J` : '–'],
+    ['Kalorier', m.calories ?? '–'], ['Återhämtningspuls', m.recoveryHr ?? '–']
+  ];
+  const ins = insights(m);
+  const splits = (s.splits || []).filter(x => x.time || x.power);
+  return `
+  <div class="card">
+    <div class="sumhead">
+      <div><h2>${ctx==='live' ? 'Passet är klart' : esc(fmtDate(s.start))}${s.source==='demo' ? '<span class="badge">demo</span>' : ''}</h2>
+      <div class="muted small">${esc(s.machine || 'SkiErg')}, ${ctx==='live' ? esc(fmtDate(s.start)) : esc(s.endReason || '')}</div></div>
+      <button class="btn" data-act="close">${ctx==='live' ? 'Stäng' : 'Tillbaka'}</button>
+    </div>
+    <div class="kv">${kv.map(([k,v]) => `<div><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`).join('')}</div>
+  </div>
+  ${ins.length ? `<div class="card"><h3>Vad datan visar</h3>${ins.map(i => `<div class="insight"><div class="t"><span>${i.t}</span><span>${esc(i.v)}</span></div><p>${esc(i.p)}</p></div>`).join('')}</div>` : ''}
+  <div class="card">
+    <h3>Watt och puls</h3><canvas class="chart" data-chart="pw"></canvas>
+    <div class="legend"><span><i style="background:var(--power)"></i>Watt</span><span><i style="background:var(--hr)"></i>Puls</span></div>
+  </div>
+  <div class="card">
+    <h3>Tempo och takt</h3><canvas class="chart" data-chart="pace"></canvas>
+    <div class="legend"><span><i style="background:var(--pace)"></i>Tempo /500 m</span><span><i style="background:var(--spm)"></i>Takt</span></div>
+  </div>
+  ${m.curve ? `<div class="card"><h3>Snittkraftkurva, början mot slut</h3><canvas class="chart short" data-chart="force"></canvas>
+    <div class="legend"><span><i style="background:var(--pace)"></i>Första tredjedelen</span><span><i style="background:var(--power)"></i>Sista tredjedelen</span></div></div>` : ''}
+  ${splits.length ? `<div class="card"><h3>Splittar</h3><div class="tablewrap"><table>
+    <tr><th>#</th><th>Tid</th><th>Meter</th><th>Tempo</th><th>Watt</th><th>Takt</th><th>Puls</th></tr>
+    ${splits.map(x => `<tr><td>${x.n}</td><td>${fmtTime(x.time)}</td><td>${x.dist ?? '–'}</td><td>${fmtPace(x.pace)}</td><td>${x.power ?? '–'}</td><td>${x.spm ?? '–'}</td><td>${x.hr ?? '–'}</td></tr>`).join('')}
+  </table></div></div>` : ''}
+  <div class="card">
+    <h3>Analysera i Claude</h3>
+    <p class="muted small">Analysfilen innehåller passet, minutdata, splittar och dina 25 senaste pass att jämföra med, plus en färdig instruktion. Dela den till Claude och skriv "Analysera passet".</p>
+    <label for="note-${s.id}">Anteckning om passet (syfte, känsla, sömn), följer med i filen</label>
+    <textarea id="note-${s.id}" data-act="note" placeholder="t.ex. Tröskelpass, kändes tungt efter dålig sömn">${esc(s.note || '')}</textarea>
+    <div class="btnrow">
+      <button class="btn primary" data-act="share">Dela till Claude</button>
+      <button class="btn" data-act="md">Ladda ner analysfil</button>
+      <button class="btn" data-act="csv">Rådata som CSV</button>
+    </div>
+  </div>
+  ${ctx==='history' ? '<div class="btnrow" style="margin-bottom:14px"><button class="btn danger" data-act="delete">Radera passet</button></div>' : ''}`;
+}
+function renderSummary(el, s, ctx, onClose){
+  el.innerHTML = summaryHTML(s, ctx);
+  el.querySelector('[data-act=close]').onclick = onClose;
+  const noteEl = el.querySelector('[data-act=note]');
+  const syncNote = async () => { if (s.note !== noteEl.value) { s.note = noteEl.value; try { await DB.put(s); } catch(_) {} } };
+  noteEl.onchange = syncNote;
+  const shareBtn = el.querySelector('[data-act=share]');
+  if (!canShareFiles()) shareBtn.classList.add('hidden');
+  shareBtn.onclick = async () => { await syncNote(); const f = await buildPassFile(s); shareOrDownload(f.base, f.text); };
+  el.querySelector('[data-act=md]').onclick = async () => { await syncNote(); const f = await buildPassFile(s); download(f.base + '.md', f.text, 'text/markdown'); };
+  el.querySelector('[data-act=csv]').onclick = () => exportCSV(s);
+  const del = el.querySelector('[data-act=delete]');
+  if (del) del.onclick = async () => { if (confirm('Radera passet permanent?')) { await DB.del(s.id); toast('Passet är raderat'); onClose(); } };
+  requestAnimationFrame(() => drawSummaryCharts(el, s));
+}
+function drawSummaryCharts(el, s){
+  const sm = s.samples, xf = v => `${Math.round(v)} min`;
+  const pS = smooth(sm.map(x => x.p || null), 7);
+  drawChart(el.querySelector('[data-chart=pw]'), [
+    { pts: sm.map((x,i) => [x.t/60, pS[i]]), color: cssVar('--power') },
+    { pts: sm.map(x => [x.t/60, x.hr || null]), color: cssVar('--hr') }
+  ], { xfmt: xf });
+  const paceS = smooth(sm.map(x => x.pace > 0 && x.pace < 600 ? x.pace : null), 7);
+  drawChart(el.querySelector('[data-chart=pace]'), [
+    { pts: sm.map((x,i) => [x.t/60, paceS[i]]), color: cssVar('--pace'), invert: true, fmt: fmtPace },
+    { pts: sm.map(x => [x.t/60, x.spm || null]), color: cssVar('--spm') }
+  ], { xfmt: xf });
+  const c = s.summary.curve, fcEl = el.querySelector('[data-chart=force]');
+  if (c && fcEl) {
+    const mx = Math.max(...c.early, ...c.late) * 1.08;
+    drawChart(fcEl, [
+      { pts: c.early.map((v,i) => [i/(c.early.length-1), v]), color: cssVar('--pace'), min:0, max:mx, width:3 },
+      { pts: c.late.map((v,i) => [i/(c.late.length-1), v]), color: cssVar('--power'), min:0, max:mx, width:3, label:false }
+    ], { xfmt: v => v === 0 ? 'dragets start' : 'slut' });
+  }
+}
+function showLiveSummary(s){
+  const el = $('#summaryLive');
+  renderSummary(el, s, 'live', () => { el.innerHTML = ''; });
+  if (currentView === 'live') el.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+/* ============================================================ Historik */
+async function renderHistory(){
+  $('#histDetail').innerHTML = '';
+  const list = $('#histList'); list.classList.remove('hidden');
+  let all = [];
+  try { all = (await DB.all()).filter(s => s.summary).sort((a,b) => b.start.localeCompare(a.start)); } catch(e) {}
+  if (!all.length) {
+    list.innerHTML = '<div class="card"><h2>Inga pass än</h2><p class="muted">Anslut till PM5 och kör ett pass, eller prova ett demopass från Live-fliken.</p></div>';
+    return;
+  }
+  const chrono = all.slice().reverse();
+  list.innerHTML = `
+    <div class="card"><h3>Utveckling, snittwatt och puls per pass</h3><canvas class="chart" id="histTrend"></canvas>
+      <div class="legend"><span><i style="background:var(--power)"></i>Snittwatt</span><span><i style="background:var(--hr)"></i>Snittpuls</span></div></div>
+    ${all.map(s => { const m = s.summary; return `
+      <button class="hist-item" data-id="${esc(s.id)}">
+        <div><div class="d">${esc(fmtDate(s.start))}${s.source==='demo' ? '<span class="badge">demo</span>' : ''}</div>
+        <div class="m">${Math.round(m.distance)} m på ${fmtTime(m.duration)}${m.avgHr ? `, puls ${Math.round(m.avgHr)}` : ''}</div></div>
+        <div class="r">${fmtPace(m.avgPace)}<div class="m">${m.avgPower ?? '–'} W</div></div>
+      </button>`; }).join('')}`;
+  list.querySelectorAll('.hist-item').forEach(b => b.onclick = () => openHistory(b.dataset.id));
+  requestAnimationFrame(() => drawChart($('#histTrend'), [
+    { pts: chrono.map((s,i) => [i, s.summary.avgPower || null]), color: cssVar('--power') },
+    { pts: chrono.map((s,i) => [i, s.summary.avgHr || null]), color: cssVar('--hr') }
+  ], { xfmt: v => v === 0 ? 'första' : 'senaste', empty:'Behöver minst två pass' }));
+}
+async function openHistory(id){
+  const s = await DB.get(id); if (!s) return;
+  $('#histList').classList.add('hidden');
+  renderSummary($('#histDetail'), s, 'history', () => renderHistory());
+  window.scrollTo(0,0);
+}
+
+/* ============================================================ Analysfiler för Claude */
+const PASS_PROMPT = `Du är en erfaren tränare inom längdskidåkning och SkiErg-träning med gedigen kunskap i träningsfysiologi. Filen innehåller data från mitt senaste SkiErg-pass och mina tidigare pass.
+
+Analysera passet ärligt och konkret:
+- Vad passet var (tolka typ av pass utifrån struktur, intensitet och min anteckning).
+- Vad datan avslöjar: effektfördelning och fall över tid, pulsdrift, val av takt och arbete per drag, förändringar i kraftkurvan som tecken på teknisk trötthet.
+- Hur passet står sig mot historiken: trender, jämförbara pass, framsteg eller varningstecken.
+- Två till tre konkreta, genomförbara råd för kommande pass.
+
+Använd siffror ur datan när du argumenterar. Var tydlig med osäkerhet när underlaget är tunt, till exempel om puls saknas eller historiken är kort. Hitta inte på värden som inte finns i datan. Svara på svenska, sakligt och koncist.`;
+const HIST_PROMPT = `Du är en erfaren tränare inom längdskidåkning och SkiErg-träning med gedigen kunskap i träningsfysiologi. Filen innehåller alla mina sparade SkiErg-pass.
+
+Analysera min långsiktiga utveckling: trender i effekt, tempo och puls vid jämförbar belastning, träningsvolym och fördelning mellan passtyper över tid, samt tecken på framsteg, stagnation eller överbelastning. Föreslå hur jag bör lägga upp de kommande veckorna. Använd siffror ur datan, var tydlig med osäkerhet och hitta inte på värden. Svara på svenska.`;
+const cell = v => v==null || v==='' || (typeof v==='number' && !isFinite(v)) ? '–' : String(v).replace(/\|/g,'/').replace(/\s*\n\s*/g,' ');
+const mdRow = c => '| ' + c.map(cell).join(' | ') + ' |';
+const mdTable = (head, rows) => [mdRow(head), '|' + head.map(()=>' --- ').join('|') + '|', ...rows.map(mdRow)].join('\n');
+const fileStamp = iso => { const d = new Date(iso); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`; };
+function aboutLines(){
+  const L = [];
+  if (settings.maxHr) L.push(`- Maxpuls: ${settings.maxHr}`);
+  if (settings.about) L.push(`- Bakgrund och mål: ${cell(settings.about)}`);
+  return L.length ? ['', '## Om mig', ...L] : [];
+}
+function histTable(list){
+  return mdTable(['Datum','Tid','Meter','Tempo /500 m','Watt','Takt','Snittpuls','Maxpuls','Effektförändring','Pulsdrift','Bästa 60 s (W)','Anteckning'],
+    list.map(s => { const m = s.summary; return [
+      fmtDate(s.start) + (s.source==='demo' ? ' (demo)' : ''), fmtTime(m.duration), Math.round(m.distance), fmtPace(m.avgPace),
+      m.avgPower, r1(m.avgSpm), m.avgHr ? Math.round(m.avgHr) : null, m.maxHr,
+      m.fade!=null ? signed(m.fade) : null, m.decoupling!=null ? signed(m.decoupling) : null, m.best60,
+      s.note ? s.note.slice(0,120) : null ]; }));
+}
+async function buildPassFile(s){
+  const m = s.summary;
+  let hist = [];
+  try { hist = (await DB.all()).filter(x => x.id !== s.id && x.summary && x.start < s.start).sort((a,b) => b.start.localeCompare(a.start)).slice(0,25); } catch(e) {}
+  const c = m.curve, splits = (s.splits || []).filter(x => x.time || x.power);
+  const text = [
+    `# SkiErg-pass ${fmtDate(s.start)}`, '',
+    `Exporterad från SkiErg Live ${fmtDate(new Date().toISOString())}.` + (s.source==='demo' ? ' **Obs! Simulerad demodata, inte ett riktigt pass.**' : ''),
+    '', '## Instruktion', PASS_PROMPT,
+    ...aboutLines(),
+    '', '## Anteckning om passet', s.note ? cell(s.note) : 'Ingen anteckning.',
+    '', '## Sammanfattning',
+    mdTable(['Mått','Värde'], [
+      ['Maskin', s.machine], ['Tid', fmtTime(m.duration)], ['Distans (m)', Math.round(m.distance)], ['Snittempo /500 m', fmtPace(m.avgPace)],
+      ['Snittwatt', m.avgPower], ['Takt (spm)', r1(m.avgSpm)], ['Snittpuls', m.avgHr ? Math.round(m.avgHr) : null], ['Maxpuls', m.maxHr],
+      ['Återhämtningspuls enligt PM5', m.recoveryHr], ['Antal drag', m.strokes], ['Meter per drag', r2(m.dps)],
+      ['Arbete per drag (J)', m.avgWork ? Math.round(m.avgWork) : null], ['Kalorier', m.calories], ['Bästa 60 s (W)', m.best60],
+      ['Hur passet avslutades', s.endReason]
+    ]),
+    '', '## Härledda nyckeltal',
+    mdTable(['Nyckeltal','Värde','Definition'], [
+      ['Effektförändring', m.fade!=null ? signed(m.fade) : null, 'Snittwatt andra halvan jämfört med första halvan'],
+      ['Pulsdrift (decoupling)', m.decoupling!=null ? signed(m.decoupling) : null, 'Minskning av kvoten watt/puls från första till andra halvan. Positivt värde betyder att pulsen steg relativt effekten'],
+      ['Effektvariation', m.cv!=null ? `${m.cv.toFixed(1)} %` : null, 'Variationskoefficient för effekt per drag'],
+      ['Toppkraft, första och sista tredjedelen', c ? `${c.peakEarly} / ${c.peakLate} lbf` : null, 'Toppen på snittkraftkurvan'],
+      ['Toppens läge i draget, första och sista tredjedelen', c ? `${r2(c.posEarly)} / ${r2(c.posLate)}` : null, '0 är dragets start och 1 dess slut']
+    ]),
+    '', '## Per minut',
+    mdTable(['Minut','Watt','Takt (spm)','Puls','Tempo /500 m'], m.perMin.map(x => [x.min, x.p, x.spm, x.hr, fmtPace(x.pace)])),
+    ...(splits.length ? ['', '## Splittar', mdTable(['Nr','Tid','Meter','Tempo /500 m','Watt','Takt','Puls'],
+      splits.map(x => [x.n, fmtTime(x.time), x.dist, fmtPace(x.pace), x.power, x.spm, x.hr]))] : []),
+    '', `## Historik, ${hist.length} tidigare pass (nyast först)`,
+    hist.length ? histTable(hist) : 'Inga tidigare pass sparade.', ''
+  ].join('\n');
+  return { base: `skierg_${fileStamp(s.start)}`, text };
+}
+async function exportHistoryMd(){
+  let all = [];
+  try { all = (await DB.all()).filter(s => s.summary).sort((a,b) => a.start.localeCompare(b.start)); } catch(e) {}
+  if (!all.length) { toast('Det finns inga pass att exportera'); return; }
+  const text = [`# SkiErg-historik, ${all.length} pass`, '', `Exporterad från SkiErg Live ${fmtDate(new Date().toISOString())}.`,
+    '', '## Instruktion', HIST_PROMPT, ...aboutLines(), '', '## Alla pass (äldst först)', histTable(all), ''].join('\n');
+  shareOrDownload(`skierg_historik_${fileStamp(new Date().toISOString())}`, text);
+}
+function canShareFiles(){
+  try { return !!(navigator.canShare && navigator.canShare({ files:[new File(['x'], 'test.txt', { type:'text/plain' })] })); } catch(e) { return false; }
+}
+// Chrome på Android delar bara vissa filtyper, därför .txt vid delning och .md vid nedladdning
+async function shareOrDownload(base, text){
+  if (canShareFiles()) {
+    const file = new File([text], base + '.txt', { type:'text/plain' });
+    try { await navigator.share({ files:[file], title: base }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  download(base + '.md', text, 'text/markdown');
+  toast('Filen laddades ner');
+}
+
+/* ============================================================ Export och import */
+function exportCSV(s){
+  const head = 't_s,distans_m,watt,tempo_s_per_500m,takt_spm,puls,kalorier';
+  const rows = s.samples.map(x => [x.t, x.d, x.p, x.pace, x.spm, x.hr ?? '', x.cal].join(','));
+  download(`skierg_${s.start.slice(0,16).replace(/[:T]/g,'-')}.csv`, head + '\n' + rows.join('\n'), 'text/csv');
+}
+async function exportAll(){
+  const all = await DB.all();
+  download(`skierg_backup_${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(all), 'application/json');
+}
+async function importFile(file){
+  try {
+    const data = JSON.parse(await file.text());
+    const arr = Array.isArray(data) ? data : (data.sessions || []);
+    let n = 0;
+    for (const s of arr) {
+      if (!s || !s.id || !Array.isArray(s.samples)) continue;
+      s.strokes ||= []; s.splits ||= []; s.curves ||= []; s.pm ||= {};
+      if (!s.summary) s.summary = computeSummary(s);
+      await DB.put(s); n++;
+    }
+    toast(`${n} pass importerade`);
+  } catch (e) { toast('Importen misslyckades: ' + e.message); }
+}
+
+/* ============================================================ Bluetooth: PM5 */
+const pm = { device:null, server:null, manual:false, reconnecting:false };
+async function connectPM(){
+  if (!navigator.bluetooth) { toast('Web Bluetooth saknas i den här webbläsaren'); return; }
+  if (connState === 'demo') stopDemo();
+  try {
+    const dev = await navigator.bluetooth.requestDevice({ filters:[{ namePrefix:'PM5' }], optionalServices:[SVC.info, SVC.control, SVC.rowing] });
+    pm.device = dev; pm.manual = false;
+    dev.addEventListener('gattserverdisconnected', onPMDisconnect);
+    setConn('connecting');
+    await setupPM();
+  } catch (e) {
+    if (e.name !== 'NotFoundError') { toast('Anslutningen misslyckades: ' + e.message); logMsg('Anslutningsfel: ' + e.message); }
+    if (connState === 'connecting') setConn('none');
+  }
+}
+async function setupPM(){
+  const server = await pm.device.gatt.connect();
+  pm.server = server;
+  logMsg('Ansluten till ' + (pm.device.name || 'PM5'));
+  const svc = await server.getPrimaryService(SVC.rowing);
+  try { const c = await svc.getCharacteristic(CH.rate); await c.writeValue(Uint8Array.of(Number(settings.rate))); logMsg('Uppdateringsfrekvens satt till läge ' + settings.rate); }
+  catch (e) { logMsg('Kunde inte sätta frekvens: ' + e.message); }
+  // Androids BLE-stack klarar bara en GATT-operation i taget, därför await i ordning
+  for (const key of NOTIFY) {
+    try {
+      const c = await svc.getCharacteristic(CH[key]);
+      c.addEventListener('characteristicvaluechanged', e => dispatch(CH[key], e.target.value));
+      await c.startNotifications();
+    } catch (e) { logMsg(`Prenumeration ${key} misslyckades: ${e.message}`); }
+  }
+  try {
+    const info = await server.getPrimaryService(SVC.info), td = new TextDecoder();
+    const serial = td.decode(await (await info.getCharacteristic(CH.serial)).readValue());
+    const fw = td.decode(await (await info.getCharacteristic(CH.fw)).readValue());
+    logMsg(`Serienummer ${serial.trim()}, firmware ${fw.trim()}`);
+  } catch (e) { logMsg('Kunde inte läsa enhetsinfo: ' + e.message); }
+  setConn('pm5');
+  toast('Ansluten till PM5');
+}
+async function onPMDisconnect(){
+  pm.server = null;
+  if (pm.manual) { setConn('none'); logMsg('Frånkopplad'); return; }
+  if (pm.reconnecting) return;
+  pm.reconnecting = true; setConn('reconnecting'); logMsg('Anslutningen bröts, försöker återansluta');
+  for (let i=1; i<=6; i++) {
+    await sleep(1000*i);
+    if (pm.manual) break;
+    try { await setupPM(); pm.reconnecting = false; logMsg('Återansluten'); return; }
+    catch (e) { logMsg(`Återanslutning ${i} misslyckades: ${e.message}`); }
+  }
+  pm.reconnecting = false;
+  if (!pm.manual) { setConn('none'); toast('Kunde inte återansluta till PM5'); }
+}
+function disconnectPM(){ pm.manual = true; try { pm.device?.gatt?.disconnect(); } catch(e) {} setConn('none'); }
+
+/* ============================================================ Bluetooth: pulsband */
+async function connectHR(){
+  if (!navigator.bluetooth) { toast('Web Bluetooth saknas i den här webbläsaren'); return; }
+  try {
+    const dev = await navigator.bluetooth.requestDevice({ filters:[{ services:['heart_rate'] }] });
+    hrs.device = dev;
+    dev.addEventListener('gattserverdisconnected', () => { $('#btnHr').classList.remove('on'); logMsg('Pulsbandet kopplades från'); });
+    const srv = await dev.gatt.connect();
+    const c = await (await srv.getPrimaryService('heart_rate')).getCharacteristic('heart_rate_measurement');
+    c.addEventListener('characteristicvaluechanged', e => {
+      const d = e.target.value, f = d.getUint8(0);
+      hrs.v = (f & 1) ? d.getUint16(1, true) : d.getUint8(1); hrs.at = Date.now(); markDirty();
+    });
+    await c.startNotifications();
+    $('#btnHr').classList.add('on'); toast('Pulsbandet är anslutet'); logMsg('Pulsband anslutet: ' + (dev.name || ''));
+  } catch (e) { if (e.name !== 'NotFoundError') toast('Pulsbandet kunde inte anslutas: ' + e.message); }
+}
+
+/* ============================================================ Skärmlås */
+let wakeLock = null;
+async function requestWakeLock(){ try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch(e) {} }
+function releaseWakeLock(){ try { wakeLock?.release(); } catch(e) {} wakeLock = null; }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && connState !== 'none') requestWakeLock(); });
+
+/* ============================================================ Demo: simulerad PM5 */
+const sim = { timer:null, S:null };
+function pkt(n){
+  const b = new Uint8Array(n), dv = new DataView(b.buffer);
+  return { dv,
+    w8(o,v){ b[o] = Math.max(0, Math.round(v)) & 255; },
+    w16(o,v){ dv.setUint16(o, Math.max(0, Math.round(v)) & 0xffff, true); },
+    w24(o,v){ v = Math.max(0, Math.round(v)); b[o] = v & 255; b[o+1] = (v>>8) & 255; b[o+2] = (v>>16) & 255; } };
+}
+function startDemo(){
+  if (connState === 'pm5' || connState === 'reconnecting') { toast('Koppla från PM5 först'); return; }
+  stopDemo(true);
+  sim.S = { phase:'pre', pre:4, post:0, t:0, dist:0, cal:0, hr:88, P:0, spm:40, strokes:0, nextStroke:0.5, dur:480,
+    splitN:0, splitT0:0, splitD0:0, splitAcc:{ p:0, spm:0, hr:0, n:0, cal0:0 }, acc:{ p:0, spm:0, hr:0, n:0, minHr:999, maxHr:0 } };
+  setConn('demo'); logMsg('Demopass startat');
+  sim.timer = setInterval(simTick, 250);
+}
+function stopDemo(silent){ if (sim.timer) { clearInterval(sim.timer); sim.timer = null; } if (!silent && connState === 'demo') setConn('none'); }
+function simTick(){
+  const S = sim.S; if (!S) return;
+  if (S.phase === 'pre') { simGeneral(S, 0); simAdd1(S); if (--S.pre <= 0) S.phase = 'run'; return; }
+  if (S.phase === 'end') { if (--S.post <= 0) stopDemo(); return; }
+  S.t += 1;
+  const frac = Math.min(1, S.t/S.dur), surge = (S.t % 120) >= 100 ? 55 : 0;
+  S.P = Math.max(40, 180*(1 - 0.10*frac) + surge + (Math.random() - 0.5)*18);
+  S.dist += Math.cbrt(S.P/2.8);
+  S.cal += ((4*S.P*0.8604) + 300) / 3600;
+  S.hr += (92 + (S.P - 40)*0.42 + 22*frac - S.hr) * 0.06;
+  S.spm = Math.round(38 + (S.P - 180)/7 + (Math.random() - 0.5)*2);
+  const A = S.acc; A.p += S.P; A.spm += S.spm; A.hr += S.hr; A.n++; A.minHr = Math.min(A.minHr, S.hr); A.maxHr = Math.max(A.maxHr, S.hr);
+  const B = S.splitAcc; B.p += S.P; B.spm += S.spm; B.hr += S.hr; B.n++;
+  S.nextStroke -= 1;
+  while (S.nextStroke <= 0) { simStroke(S, frac); S.nextStroke += 60/S.spm; }
+  simGeneral(S, 1); simAdd1(S); simAdd2(S);
+  if (S.t - S.splitT0 >= 120) simSplit(S);
+  if (S.t >= S.dur) { if (S.t - S.splitT0 > 5) simSplit(S); simGeneral(S, 10); simSummary(S); S.phase = 'end'; S.post = 14; }
+}
+function simGeneral(S, ws){
+  const q = pkt(19); q.w24(0, S.t*100); q.w24(3, S.dist*10); q.w8(6, 0); q.w8(7, 255); q.w8(8, ws); q.w8(9, ws===1 ? 1 : 0);
+  q.w8(10, ws===1 ? 2 : 0); q.w24(11, S.dist); q.w24(14, 0); q.w8(17, 0); q.w8(18, 105); dispatch(CH.general, q.dv);
+}
+function simAdd1(S){
+  const v = S.P ? Math.cbrt(S.P/2.8) : 0, q = pkt(17);
+  q.w24(0, S.t*100); q.w16(3, v*1000); q.w8(5, S.P ? S.spm : 0); q.w8(6, S.hr); q.w16(7, v ? 500/v*100 : 0);
+  q.w16(9, S.dist > 0 ? S.t/S.dist*500*100 : 0); q.w16(11, 0); q.w24(13, 0); q.w8(16, 128); dispatch(CH.add1, q.dv);
+}
+function simAdd2(S){
+  const q = pkt(20); q.w24(0, S.t*100); q.w8(3, S.splitN); q.w16(4, S.acc.n ? S.acc.p/S.acc.n : 0); q.w16(6, S.cal);
+  dispatch(CH.add2, q.dv);
+}
+function simStroke(S, frac){
+  S.strokes++;
+  const cyc = 60/S.spm, work = S.P*cyc, drive = 0.42 + 0.04*frac, peak = (55 + S.P*0.28)*(1 - 0.06*frac);
+  const a = pkt(20); a.w24(0, S.t*100); a.w24(3, S.dist*10); a.w8(6, (1.25 - 0.05*frac)*100); a.w8(7, drive*100);
+  a.w16(8, (cyc - drive)*100); a.w16(10, Math.cbrt(S.P/2.8)*cyc*100); a.w16(12, peak*10); a.w16(14, peak*0.55*10);
+  a.w16(16, work*10); a.w16(18, S.strokes); dispatch(CH.stroke, a.dv);
+  const b = pkt(15); b.w24(0, S.t*100); b.w16(3, S.P); b.w16(5, 4*S.P*0.8604 + 300); b.w16(7, S.strokes); dispatch(CH.addStroke, b.dv);
+  const N = 22 + Math.floor(Math.random()*4), pp = 0.32 + 0.12*frac, vals = [];
+  for (let i=0; i<N; i++) {
+    const x = i/(N-1), f = x < pp ? Math.sin(Math.PI/2*x/pp) : Math.cos(Math.PI/2*(x-pp)/(1-pp));
+    vals.push(Math.max(0, Math.round(peak*Math.pow(Math.max(0,f), 1.3) + (Math.random() - 0.5)*3)));
+  }
+  const total = Math.ceil(N/9);
+  for (let k=0; k<total; k++) {
+    const words = vals.slice(k*9, k*9 + 9), c = pkt(2 + words.length*2);
+    c.w8(0, (total << 4) | words.length); c.w8(1, S.strokes*total + k);
+    words.forEach((w,i) => c.w16(2 + i*2, w));
+    dispatch(CH.force, c.dv);
+  }
+}
+function simSplit(S){
+  S.splitN++;
+  const st = S.t - S.splitT0, sd = S.dist - S.splitD0, B = S.splitAcc;
+  const q = pkt(18); q.w24(0, S.t*100); q.w24(3, S.dist*10); q.w24(6, st*10); q.w24(9, sd); q.w8(17, S.splitN); dispatch(CH.split, q.dv);
+  const r = pkt(19); r.w24(0, S.t*100); r.w8(3, B.n ? B.spm/B.n : 0); r.w8(4, B.n ? B.hr/B.n : 0); r.w16(6, sd > 0 ? st/sd*500*10 : 0);
+  r.w16(8, S.cal - B.cal0); r.w16(12, st > 0 ? sd/st*1000 : 0); r.w16(14, B.n ? B.p/B.n : 0); r.w8(16, 105); r.w8(17, S.splitN); r.w8(18, 128);
+  dispatch(CH.addSplit, r.dv);
+  S.splitT0 = S.t; S.splitD0 = S.dist; S.splitAcc = { p:0, spm:0, hr:0, n:0, cal0:S.cal };
+}
+function simSummary(S){
+  const A = S.acc, q = pkt(20);
+  q.w24(4, S.t*100); q.w24(7, S.dist*10); q.w8(10, A.spm/A.n); q.w8(11, S.hr); q.w8(12, A.hr/A.n); q.w8(13, A.minHr); q.w8(14, A.maxHr);
+  q.w8(15, 105); q.w8(16, S.hr - 25); q.w8(17, 0); q.w16(18, S.t/S.dist*500*10); dispatch(CH.summary, q.dv);
+  const r = pkt(19); r.w16(5, 120); r.w8(7, S.splitN); r.w16(8, S.cal); r.w16(10, A.p/A.n); dispatch(CH.addSummary, r.dv);
+}
+
+/* ============================================================ Navigering och start */
+let currentView = 'live';
+function show(view){
+  currentView = view;
+  ['live','history','log','settings'].forEach(v => $('#view-'+v).classList.toggle('hidden', v !== view));
+  document.querySelectorAll('nav.bottom button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  if (view === 'history') renderHistory();
+  if (view === 'log') renderLog();
+  if (view === 'live') { renderLive(); drawLiveChart(); drawForce(); }
+  window.scrollTo(0,0);
+}
+// 1 Hz: livegraf och inaktivitetskontroll
+setInterval(() => {
+  if (connState !== 'none') {
+    liveBuf.push({ t: Date.now()/1000, p: live.power || 0, hr: getHr() });
+    while (liveBuf.length > 190) liveBuf.shift();
+    if (currentView === 'live') drawLiveChart();
+  }
+  if (rec && !finTimer && Date.now() - rec.lastChange > 120000) finalize('ingen aktivitet på två minuter');
+}, 1000);
+window.addEventListener('beforeunload', e => { if (rec) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('resize', () => { if (currentView === 'live') { drawLiveChart(); drawForce(); } });
+
+(async function init(){
+  if (!navigator.bluetooth) $('#btWarn').classList.remove('hidden');
+  await DB.open();
+  await recoverDrafts();
+  $('#setRate').value = String(settings.rate); $('#setMaxHr').value = settings.maxHr; $('#setAbout').value = settings.about || '';
+  $('#setAbout').onchange = e => { settings.about = e.target.value.trim(); saveSettings(); };
+  $('#setRate').onchange = e => { settings.rate = Number(e.target.value); saveSettings(); };
+  $('#setMaxHr').onchange = e => { settings.maxHr = e.target.value; saveSettings(); };
+  $('#btnConnect').onclick = () => (connState === 'pm5' || connState === 'reconnecting') ? disconnectPM() : connectPM();
+  $('#btnHr').onclick = connectHR;
+  $('#btnDemo').onclick = startDemo;
+  $('#btnStop').onclick = () => { if (confirm('Avsluta och spara passet nu?')) finalize('avslutat manuellt'); };
+  $('#btnLogPause').onclick = e => { logPaused = !logPaused; e.currentTarget.textContent = logPaused ? 'Fortsätt' : 'Pausa'; };
+  $('#btnLogClear').onclick = () => { rawLog.length = 0; renderLog(); };
+  $('#btnLogCopy').onclick = async () => { try { await navigator.clipboard.writeText(rawLog.join('\n')); toast('Loggen är kopierad'); } catch(e) { toast('Kunde inte kopiera'); } };
+  $('#btnExportAll').onclick = exportAll;
+  $('#btnExportHist').onclick = exportHistoryMd;
+  $('#btnImport').onclick = () => $('#fileImport').click();
+  $('#fileImport').onchange = e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = ''; };
+  $('#btnWipe').onclick = async () => { if (confirm('Radera alla sparade pass permanent?')) { await DB.clear(); toast('Alla pass är raderade'); } };
+  document.querySelectorAll('nav.bottom button').forEach(b => b.onclick = () => show(b.dataset.view));
+  setConn('none'); show('live');
+})();
+</script>
+</body>
+</html>
