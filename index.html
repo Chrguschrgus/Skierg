@@ -132,6 +132,28 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
 .efftext .k{font-size:13px;color:var(--muted)}
 .efftext .v{font-family:var(--num);font-size:32px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
 .efftext .z{font-weight:600;margin-top:2px}
+.trackhead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.track svg{width:100%;height:auto;display:block;margin-top:4px}
+.tinfo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.tinfo .k{font-size:13px;color:var(--muted)}
+.tinfo .v{font-family:var(--num);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.tinfo .sub{font-size:13px;color:var(--muted)}
+.ahead{color:var(--accent)} .behind{color:var(--power)}
+.tgtpanel{margin-top:10px;padding-top:4px;border-top:1px solid var(--line)}
+.tgtpanel .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.zbar{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:6px}
+.zseg{background:var(--surface2);border-radius:8px;padding:6px 2px;text-align:center}
+.zseg .zl{font-weight:700;font-size:15px}
+.zseg .zt{font-family:var(--num);font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums}
+.zseg.on{background:var(--hr);color:#141414}
+.zseg.on .zt{color:#141414}
+.zrows{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;margin-top:6px;font-size:14px;font-variant-numeric:tabular-nums}
+.zrows .track0{background:var(--surface2);border-radius:6px;height:12px;overflow:hidden}
+.zrows .bar{height:12px;background:var(--hr)}
+.rpe{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:8px}
+.rpe button{padding:9px 0;border-radius:8px;border:1px solid var(--line);background:var(--surface2);color:var(--text);font-weight:700}
+.rpe button.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.pblist{margin:6px 0 0;padding-left:18px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));background:var(--text);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s;z-index:20;pointer-events:none;max-width:90vw}
 .toast.show{opacity:1}
 </style>
@@ -169,6 +191,32 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
         <div class="s"><div class="k">Takt</div><div class="v" id="v-spm">–</div></div>
         <div class="h"><div class="k">Puls</div><div class="v" id="v-hr">–</div></div>
       </div>
+    </div>
+
+    <div class="card" id="trackCard">
+      <div class="trackhead"><h3 id="trackTitle">Mål</h3><button class="btn" id="btnTgt">Ändra mål</button></div>
+      <div class="track" id="trackSvg"></div>
+      <div id="trackInfo"></div>
+      <div class="tgtpanel hidden" id="tgtPanel">
+        <label for="tgtMode">Mål för passet</label>
+        <select id="tgtMode">
+          <option value="auto">Från PM5 (programmerat distans- eller tidspass)</option>
+          <option value="dist">Distans som jag väljer</option>
+          <option value="time">Tid som jag väljer</option>
+          <option value="vasa">Vasaloppet hemma, 90 km över flera pass</option>
+        </select>
+        <div class="row2">
+          <div id="tgtDistWrap"><label for="tgtDist">Distans (m)</label><input id="tgtDist" type="number" inputmode="numeric" min="100" step="100"></div>
+          <div id="tgtTimeWrap"><label for="tgtTime">Tid (minuter)</label><input id="tgtTime" type="number" inputmode="decimal" min="1" step="1"></div>
+        </div>
+        <div class="btnrow"><button class="btn danger" id="btnCourseReset">Börja om Vasaloppet</button></div>
+        <p class="muted small" style="margin-top:8px">Spökåkaren är ditt bästa tidigare pass med samma mål. Vasaloppet räknar ihop distansen från alla pass sedan du startade det.</p>
+      </div>
+    </div>
+
+    <div class="card" id="zoneCard">
+      <h3>Pulszon <span class="muted small" style="font-weight:500">Olympiatoppens I-skala</span></h3>
+      <div id="zoneLive"></div>
     </div>
 
     <div class="card">
@@ -366,7 +414,7 @@ function smooth(a, k){
 }
 
 /* ============================================================ Inställningar */
-const DEFAULTS = { rate:2, maxHr:'', about:'', effBand:3 };
+const DEFAULTS = { rate:2, maxHr:'', about:'', effBand:3, target:{ mode:'auto', dist:5000, time:30 }, course:null };
 let settings = (() => { try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('skierg.settings') || '{}') }; } catch(e) { return { ...DEFAULTS }; } })();
 // Rensa bort API-nyckel från tidigare version
 if ('apiKey' in settings || 'model' in settings) { delete settings.apiKey; delete settings.model; try { localStorage.setItem('skierg.settings', JSON.stringify(settings)); } catch(e) {} }
@@ -433,7 +481,8 @@ function dispatch(uuid, dv){
       case 'general': {
         const g = P.general(dv);
         Object.assign(live, { elapsed:g.elapsed, distance:g.distance, workoutState:g.workoutState, rowingState:g.rowingState,
-          strokeState:g.strokeState, workoutType:g.workoutType, dragFactor:g.dragFactor });
+          strokeState:g.strokeState, workoutType:g.workoutType, dragFactor:g.dragFactor,
+          workoutDuration:g.workoutDuration, durationType:g.durationType, intervalType:g.intervalType });
         checkRecording(); maybeSample(); break;
       }
       case 'add1': { const a = P.add1(dv); Object.assign(live, { pace:a.pace, avgPace:a.avgPace, spm:a.spm, hrPM:a.hr, speed:a.speed }); if (a.machine!=null) live.machine = a.machine; break; }
@@ -487,6 +536,7 @@ function startSession(){
     machine: machineName(live.machine), workoutType: live.workoutType,
     samples:[], strokes:[], splits:[], curves:[], pm:{}, note:'',
     lastElapsed: live.elapsed, lastChange: Date.now(), lastSampleT: -1 };
+  rec.target = activeTarget(); lastCp = null; ghost = null; loadGhost();
   $('#summaryLive').innerHTML = '';
   logMsg('Pass startat'); toast('Passet har startat, spelar in');
   updateRecUI();
@@ -521,7 +571,8 @@ async function finalize(reason){
   if (!rec) return;
   if (finTimer) { clearTimeout(finTimer); finTimer = null; }
   const s = rec; rec = null;
-  delete s.lastElapsed; delete s.lastChange; delete s.lastSampleT;
+  delete s.lastElapsed; delete s.lastChange; delete s.lastSampleT; delete s.goalToast;
+  ghost = null;
   updateRecUI();
   if (s.samples.length < 15) { try { await DB.del(s.id); } catch(e) {} toast('Passet var för kort för att sparas'); return; }
   s.end = new Date().toISOString(); s.endReason = reason;
@@ -634,6 +685,7 @@ function sessionEff(s, sessions){
 }
 async function rebuildRefs(){
   try { const all = await DB.all(); effRefs = { pm5: refsFrom(all, 'pm5'), demo: refsFrom(all, 'demo') }; } catch(e) {}
+  await rebuildCourse();
 }
 // Räknar om äldre pass med den nya modellen (och taktfiltret)
 async function migrateSummaries(){
@@ -643,7 +695,7 @@ async function migrateSummaries(){
   for (const s of all) {
     if (!Array.isArray(s.samples) || !s.samples.length || s.draft) continue;
     s.strokes ||= []; s.splits ||= []; s.curves ||= []; s.pm ||= {};
-    if (!s.summary || s.summary.v !== 2) { s.summary = computeSummary(s); touched.push(s); }
+    if (!s.summary || s.summary.v !== SUMMARY_V) { s.summary = computeSummary(s); touched.push(s); }
     else if (!s.summary.eff) touched.push(s);
   }
   for (const s of touched) { s.summary.eff = sessionEff(s, all); try { await DB.put(s); } catch(e) {} }
@@ -743,7 +795,8 @@ function computeSummary(s){
     cv: sp.length > 10 ? std(sp)/mean(sp)*100 : null,
     best60: bestWindow(sm, 60),
     perMin, curve: curveStats(s.curves),
-    effMin, mpb: effTot.b > 0 ? effTot.dd/effTot.b : null, v: 2
+    effMin, mpb: effTot.b > 0 ? effTot.dd/effTot.b : null,
+    mmp: mmpOf(sm), bestD: bestDistsOf(sm), targetResult: targetResult(s), v: SUMMARY_V
   };
 }
 function insights(m){
@@ -818,6 +871,10 @@ function drawChart(canvas, series, opt={}){
       ctx.fillText(fmt(s.invert ? ymax : ymin), xx, padT+ph);
     }
   });
+  if (opt.xticks) {
+    ctx.fillStyle = muted; ctx.textAlign = 'center';
+    opt.xticks.forEach(([x, l]) => ctx.fillText(l, padL + (x-xmin)/(xmax-xmin)*pw, H-3));
+  }
   if (opt.xfmt) {
     ctx.fillStyle = muted; ctx.textAlign = 'left'; ctx.fillText(opt.xfmt(xmin), padL, H-3);
     ctx.textAlign = 'right'; ctx.fillText(opt.xfmt(xmax), W-padR, H-3);
@@ -835,6 +892,389 @@ function drawForce(){
   const c = live.curve;
   drawChart($('#chartForce'), c ? [{ pts: c.map((v,i)=>[i/(c.length-1), v]), color: cssVar('--pace'), min:0, width:3 }] : [],
     { xfmt: v => v === 0 ? 'dragets start' : 'slut', empty:'Kurvan visas efter första draget' });
+}
+
+/* ============================================================ Mål, spökåkare och Vasaloppet */
+const SUMMARY_V = 3;
+const COURSE = { name:'Vasaloppet', total:90000, cps:[['Berga by',0],['Smågan',11000],['Mångsbodarna',24000],['Risberg',35000],['Evertsberg',47000],['Oxberg',62000],['Hökberg',71000],['Eldris',81000],['Mora',90000]] };
+const fmtInt = v => v==null || !isFinite(v) ? '–' : Math.round(v).toLocaleString('sv-SE');
+const fmtKm = v => (v/1000).toFixed(1).replace('.', ',');
+const fmtNum1 = v => v==null || !isFinite(v) ? '–' : v.toFixed(1).replace('.', ',');
+const signedNum = (v, dec) => `${v>0?'+':v<0?'−':''}${Math.abs(v).toFixed(dec).replace('.', ',')}`;
+const fmtDateShort = iso => new Date(iso).toLocaleDateString('sv-SE', { day:'numeric', month:'short' });
+function fmtClock(sec){
+  if (sec==null || !isFinite(sec)) return '–';
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), x = sec%60;
+  return h ? `${h}:${pad(m)}:${pad(x)}` : `${m}:${pad(x)}`;
+}
+function fmtGoal(g){ if (!g) return 'Inget mål'; if (g.type === 'course') return 'Vasaloppet hemma'; return g.type === 'dist' ? `${fmtInt(g.value)} m` : fmtClock(g.value); }
+function interp(xs, ys, x){
+  const n = xs.length; if (!n) return null;
+  if (x <= xs[0]) return ys[0];
+  if (x >= xs[n-1]) return ys[n-1];
+  let lo = 0, hi = n-1;
+  while (hi - lo > 1) { const mid = (lo+hi) >> 1; if (xs[mid] <= x) lo = mid; else hi = mid; }
+  const f = xs[hi] > xs[lo] ? (x - xs[lo])/(xs[hi] - xs[lo]) : 0;
+  return ys[lo] + f*(ys[hi] - ys[lo]);
+}
+// Workout type 2–3 = fast distans, 4–5 = fast tid. Workout duration: meter respektive hundradels sekunder.
+function pmTarget(){
+  const wt = live.workoutType, wd = live.workoutDuration;
+  if (!wd) return null;
+  if (wt === 2 || wt === 3) return { type:'dist', value:wd };
+  if (wt === 4 || wt === 5) return { type:'time', value:wd/100 };
+  return null;
+}
+function activeTarget(){
+  const t = settings.target || {};
+  if (t.mode === 'dist' && Number(t.dist) > 0) return { type:'dist', value:Number(t.dist), src:'app' };
+  if (t.mode === 'time' && Number(t.time) > 0) return { type:'time', value:Number(t.time)*60, src:'app' };
+  if (t.mode === 'vasa') return null;
+  const p = pmTarget(); return p ? { ...p, src:'pm5' } : null;
+}
+const courseMode = () => (settings.target || {}).mode === 'vasa';
+function currentGoal(){ if (courseMode()) return { type:'course' }; return rec && rec.target ? rec.target : activeTarget(); }
+const sameSrc = (a, b) => (a.source === 'demo') === (b.source === 'demo');
+const sameTarget = (a, b) => !!(a && b && a.type === b.type && Math.abs(a.value - b.value) < 0.5);
+function targetResult(s){
+  const tg = s.target, sm = s.samples;
+  if (!tg || !sm || sm.length < 2) return null;
+  const ts = sm.map(x=>x.t), ds = sm.map(x=>x.d), last = sm[sm.length-1];
+  if (tg.type === 'dist') return last.d < tg.value ? { reached:false } : { reached:true, time:r1(interp(ds, ts, tg.value)), dist:tg.value };
+  return last.t < tg.value - 2 ? { reached:false } : { reached:true, time:tg.value, dist:Math.round(interp(ts, ds, tg.value)) };
+}
+function bestForTarget(list, tg){
+  let best = null;
+  for (const s of list) {
+    const r = s.summary && s.summary.targetResult;
+    if (!r || !r.reached || !sameTarget(s.target, tg)) continue;
+    const b = best && best.summary.targetResult;
+    if (!best || (tg.type === 'dist' ? r.time < b.time : r.dist > b.dist)) best = s;
+  }
+  return best;
+}
+let ghost = null;
+async function loadGhost(){
+  ghost = null;
+  if (!rec) return;
+  delete rec.ghostRef;
+  if (!rec.target) return;
+  const want = rec.target, id = rec.id;
+  let all = []; try { all = await DB.all(); } catch(e) { return; }
+  if (!rec || rec.id !== id || !sameTarget(rec.target, want)) return;
+  const g = bestForTarget(all.filter(x => x.id !== rec.id && !x.draft && sameSrc(x, rec)), rec.target);
+  if (!g) return;
+  ghost = { id:g.id, date:g.start, t:g.samples.map(x=>x.t), d:g.samples.map(x=>x.d), result:g.summary.targetResult };
+  rec.ghostRef = { id:g.id, date:g.start, result:g.summary.targetResult };
+  logMsg('Spökåkare laddad från passet ' + fmtDate(g.start));
+}
+// Avstånd till spökåkaren. Positiva värden betyder att du ligger före.
+function ghostGap(goal){
+  if (!ghost || !rec || !goal || goal.type === 'course') return null;
+  const t = live.elapsed || 0, d = live.distance || 0;
+  const gd = interp(ghost.t, ghost.d, t), m = d - gd;
+  let sec;
+  if (goal.type === 'dist') sec = interp(ghost.d, ghost.t, Math.min(d, ghost.d[ghost.d.length-1])) - t;
+  else { const v = live.speed || (t > 0 ? d/t : 0); sec = v > 0 ? m/v : null; }
+  return { m, sec, gd };
+}
+let courseBase = { pm5:{ dist:0, time:0, n:0 }, demo:{ dist:0, time:0, n:0 } };
+async function rebuildCourse(){
+  const nb = { pm5:{ dist:0, time:0, n:0 }, demo:{ dist:0, time:0, n:0 } }, c = settings.course;
+  if (c && c.startedAt) {
+    let all = []; try { all = await DB.all(); } catch(e) {}
+    for (const s of all) {
+      if (!s.summary || s.draft || s.start < c.startedAt) continue;
+      const k = s.source === 'demo' ? 'demo' : 'pm5';
+      nb[k].dist += s.summary.distance || 0; nb[k].time += s.summary.duration || 0; nb[k].n++;
+    }
+  }
+  courseBase = nb;
+}
+function courseNow(){
+  const k = (rec ? rec.source : connState === 'demo' ? 'demo' : 'pm5') === 'demo' ? 'demo' : 'pm5';
+  const base = courseBase[k], cur = rec ? (live.distance || 0) : 0;
+  return { total: Math.min(COURSE.total, base.dist + cur), base, cur, demo: k === 'demo' };
+}
+function cpIndex(dist){ let i = 0; COURSE.cps.forEach((c, k) => { if (dist >= c[1]) i = k; }); return i; }
+const courseTicks = () => COURSE.cps.slice(1, -1).map(cp => ({ f: cp[1]/COURSE.total, label: String(cp[1]/1000) }));
+let lastCp = null;
+
+/* Skidåkare i stakning, två lägen som växlar för varje drag */
+function skierSVG(x, pose, color, op){
+  // Läge 1: armarna fram vid stavisättningen. Läge 2: överkroppen fälld i frånskjutet.
+  const L = pose
+    ? [[6,-28,0,-16],[0,-16,3,-8],[3,-8,1,0],[6,-28,15,-27],[15,-27,9,0]]
+    : [[11,-21,0,-17],[0,-17,4,-9],[4,-9,1,0],[11,-21,4,-11],[4,-11,-12,0]];
+  const hd = pose ? [8,-33] : [16,-23];
+  return `<g transform="translate(${x.toFixed(1)},91) scale(1.3)" stroke="${color}" stroke-opacity="${op}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M-14 1.5H18Q22 1.5 23 -1"/>${L.map(l => `<line x1="${l[0]}" y1="${l[1]}" x2="${l[2]}" y2="${l[3]}"/>`).join('')}
+    <circle cx="${hd[0]}" cy="${hd[1]}" r="3.6" fill="${color}" fill-opacity="${op}" stroke="none"/></g>`;
+}
+function trackSVG(o){
+  const x0 = 24, x1 = 336, X = f => x0 + Math.max(0, Math.min(1.04, f))*(x1 - x0);
+  const ticks = (o.ticks || []).map(t => `<line x1="${X(t.f).toFixed(1)}" y1="94" x2="${X(t.f).toFixed(1)}" y2="99" stroke="var(--muted)" stroke-width="1.5"/>
+    <text x="${X(t.f).toFixed(1)}" y="111" text-anchor="middle" font-size="10.5" fill="var(--muted)">${esc(t.label)}</text>`).join('');
+  const chk = [0,1,2].map(r => [0,1].map(c => `<rect x="${x1 + c*6}" y="${58 + r*5}" width="6" height="5" fill="${(r+c)%2 ? 'var(--surface)' : 'var(--text)'}"/>`).join('')).join('');
+  return `<svg viewBox="0 0 360 114" role="img" aria-label="${esc(o.label || 'Banan från start till mål')}">
+    <line x1="${x0}" y1="94" x2="${x1}" y2="94" stroke="var(--line)" stroke-width="4" stroke-linecap="round"/>
+    ${o.me != null ? `<line x1="${x0}" y1="94" x2="${X(o.me).toFixed(1)}" y2="94" stroke="var(--pace)" stroke-width="4" stroke-linecap="round"/>` : ''}
+    ${ticks}
+    <line x1="${x0}" y1="94" x2="${x0}" y2="56" stroke="var(--muted)" stroke-width="2"/><path d="M${x0} 56h14l-4 5 4 5h-14z" fill="var(--accent)"/>
+    <line x1="${x1}" y1="94" x2="${x1}" y2="56" stroke="var(--muted)" stroke-width="2"/>${chk}<rect x="${x1}" y="58" width="12" height="15" fill="none" stroke="var(--text)" stroke-width="1"/>
+    ${o.ghost != null ? skierSVG(X(o.ghost), o.pose, 'var(--muted)', 0.6) : ''}
+    ${o.me != null ? skierSVG(X(o.me), o.pose, 'var(--pace)', 1) : ''}
+  </svg>`;
+}
+let trackT = 0;
+function renderTrack(){
+  const now = Date.now(); if (now - trackT < 240) return; trackT = now;
+  if (rec && !rec.target && settings.target.mode === 'auto') { const p = pmTarget(); if (p) { rec.target = { ...p, src:'pm5' }; loadGhost(); } }
+  const goal = currentGoal(), pose = (live.strokeCount || 0) % 2 === 0;
+  const titleEl = $('#trackTitle'), svgEl = $('#trackSvg'), info = $('#trackInfo');
+  if (goal && goal.type === 'course') { renderCourseTrack(pose); return; }
+  if (!goal) {
+    titleEl.textContent = 'Inget mål';
+    svgEl.innerHTML = trackSVG({ me: 0, pose });
+    info.innerHTML = '<p class="muted small" style="margin-top:6px">Programmera ett distans- eller tidspass på PM5, välj ett eget mål eller kör Vasaloppet hemma under Ändra mål.</p>';
+    return;
+  }
+  const t = rec ? (live.elapsed || 0) : 0, d = rec ? (live.distance || 0) : 0;
+  const gap = ghostGap(goal), avgPace = d > 50 ? t/d*500 : null;
+  let me, gh = null, ticks, c1, c2;
+  if (goal.type === 'dist') {
+    me = d/goal.value; if (gap) gh = gap.gd/goal.value;
+    ticks = [0.25, 0.5, 0.75].map(f => ({ f, label: `${fmtInt(goal.value*f)} m` }));
+    const done = me >= 1;
+    c1 = ['Kvar', done ? 'I mål' : `${fmtInt(goal.value - d)} m`, ''];
+    c2 = done ? ['Sluttid', fmtTime(targetResult({ target:goal, samples:rec.samples })?.time), '']
+              : ['Prognos i mål', avgPace ? fmtClock(t + (goal.value - d)/500*avgPace) : '–', 'vid snittempot'];
+  } else {
+    me = t/goal.value; if (gap && gap.sec != null) gh = me - gap.sec/goal.value;
+    ticks = [0.25, 0.5, 0.75].map(f => ({ f, label: fmtClock(goal.value*f) }));
+    const done = me >= 1;
+    c1 = ['Kvar', done ? 'Klart' : fmtClock(goal.value - t), ''];
+    c2 = done ? ['Distans', `${fmtInt(d)} m`, ''] : ['Prognos distans', avgPace ? `${fmtInt(d + (goal.value - t)/avgPace*500)} m` : '–', 'vid snittempot'];
+  }
+  if (rec && me >= 1 && !rec.goalToast) { rec.goalToast = true; toast('I mål!'); }
+  let c3 = ['Spökåkare', '–', rec && rec.target ? 'inget tidigare pass med samma mål' : 'laddas när passet startar'], cls = '';
+  if (gap) {
+    cls = gap.m >= 0 ? 'ahead' : 'behind';
+    c3 = ['Mot spökåkaren', `${gap.m >= 0 ? '+' : '−'}${fmtInt(Math.abs(gap.m))} m`, gap.sec != null ? `${fmtNum1(Math.abs(gap.sec))} s ${gap.sec >= 0 ? 'före' : 'efter'}` : ''];
+  }
+  titleEl.textContent = `${fmtGoal(goal)} ${goal.src === 'pm5' ? 'från PM5' : 'eget mål'}`;
+  svgEl.innerHTML = trackSVG({ me: Math.max(0, me), ghost: gh, ticks, pose, label: fmtGoal(goal) });
+  const col = (c, k) => `<div><div class="k">${c[0]}</div><div class="v ${k || ''}">${esc(c[1])}</div><div class="sub">${esc(c[2])}</div></div>`;
+  info.innerHTML = `<div class="tinfo">${col(c1)}${col(c2)}${col(c3, cls)}</div>` +
+    (ghost ? `<p class="muted small" style="margin-top:6px">Spökåkaren är ditt bästa pass med samma mål, ${esc(fmtDate(ghost.date))}: ${goal.type === 'dist' ? fmtTime(ghost.result.time) : fmtInt(ghost.result.dist) + ' m'}.</p>` : '');
+}
+function renderCourseTrack(pose){
+  const cn = courseNow(), i = cpIndex(cn.total), next = COURSE.cps[Math.min(i+1, COURSE.cps.length-1)], done = cn.total >= COURSE.total;
+  $('#trackTitle').textContent = 'Vasaloppet hemma' + (cn.demo ? ' (demo)' : '');
+  $('#trackSvg').innerHTML = trackSVG({ me: cn.total/COURSE.total, ticks: courseTicks(), pose, label:'Vasaloppet, Berga by till Mora' });
+  if (rec) {
+    if (lastCp == null) lastCp = i;
+    else if (i > lastCp) { lastCp = i; toast(i === COURSE.cps.length-1 ? 'I mål i Mora!' : `Du passerade ${COURSE.cps[i][0]} efter ${COURSE.cps[i][1]/1000} km`); }
+  }
+  $('#trackInfo').innerHTML = `<div class="tinfo">
+    <div><div class="k">Avklarat</div><div class="v">${fmtKm(cn.total)}</div><div class="sub">av 90 km</div></div>
+    <div><div class="k">${done ? 'I mål' : 'Nästa kontroll'}</div><div class="v">${done ? 'Mora' : fmtKm(next[1] - cn.total)}</div><div class="sub">${done ? 'total tid ' + fmtClock(cn.base.time + (rec ? live.elapsed || 0 : 0)) : 'km till ' + esc(next[0])}</div></div>
+    <div><div class="k">Detta pass</div><div class="v">${fmtKm(cn.cur)}</div><div class="sub">km, ${cn.base.n} pass före</div></div></div>`;
+}
+
+/* ============================================================ Pulszoner och upplevd ansträngning */
+// Olympiatoppens intensitetsskala i procent av maxpuls. I5 har öppen övre gräns.
+const ZONES = [['I1',55,72],['I2',72,82],['I3',82,87],['I4',87,92],['I5',92,101]];
+const maxHr = () => Number(settings.maxHr) || 0;
+function zoneOf(hr, mx){ if (!(hr > 0) || !(mx > 0)) return null; const p = hr/mx*100; for (let i=ZONES.length-1; i>=0; i--) if (p >= ZONES[i][1]) return i; return -1; }
+function zoneTimes(sm, mx){
+  if (!(mx > 0) || !sm) return null;
+  const z = [0,0,0,0,0]; let under = 0, tot = 0;
+  for (let i=1; i<sm.length; i++) {
+    const a = sm[i-1], b = sm[i], dt = b.t - a.t;
+    if (dt <= 0 || dt > 3 || !(b.hr > 0)) continue;
+    const k = zoneOf(b.hr, mx); if (k < 0) under += dt; else z[k] += dt; tot += dt;
+  }
+  return { z, under, tot };
+}
+const zoneRange = z => z[2] > 100 ? `över ${z[1]}` : `${z[1]}–${z[2]}`;
+function renderZoneLive(){
+  const el = $('#zoneLive'), mx = maxHr();
+  if (!mx) { el.innerHTML = '<p class="muted small">Ange din maxpuls under Inställningar för att se pulszoner.</p>'; return; }
+  const hr = getHr(), k = zoneOf(hr, mx), zt = rec ? zoneTimes(rec.samples, mx) : null;
+  el.innerHTML = `<div class="zbar">${ZONES.map((z, i) => `<div class="zseg${i === k ? ' on' : ''}"><div class="zl">${z[0]}</div><div class="zt">${zt ? fmtClock(zt.z[i]) : zoneRange(z)}</div></div>`).join('')}</div>
+    <p class="muted small" style="margin-top:6px">${hr ? `${hr} slag, ${Math.round(hr/mx*100)} % av maxpuls${k === -1 ? ', under I1' : ''}.` : 'Ingen puls.'} ${zt ? 'Tid i varje zon under passet.' : 'Procent av maxpuls per zon.'}</p>`;
+}
+const RPE_TEXT = ['', 'Mycket, mycket lätt', 'Lätt', 'Måttlig', 'Något ansträngande', 'Ansträngande', 'Ansträngande', 'Mycket ansträngande', 'Mycket ansträngande', 'Mycket, mycket ansträngande', 'Maximal'];
+function rpeText(s){ return s.rpe ? `${s.rpe}, ${RPE_TEXT[s.rpe].toLowerCase()}. Belastning ${Math.round(s.rpe*s.summary.duration/60)} (RPE gånger minuter).` : 'Inte angivet än.'; }
+function loadHTML(s){
+  const mx = maxHr(), zt = zoneTimes(s.samples, mx);
+  const rows = zt && zt.tot > 0 ? ZONES.map((z, i) => [z[0], zt.z[i]]).concat([['Under I1', zt.under]]) : null;
+  return `<div class="card"><h3>Belastning</h3>
+    <p class="muted small">Hur ansträngande var passet som helhet? Borgs CR10-skala, gärna bedömd en kvart efter passet.</p>
+    <div class="rpe" data-rpe>${Array.from({ length:10 }, (_, i) => i+1).map(v => `<button data-v="${v}" class="${s.rpe === v ? 'on' : ''}" aria-label="RPE ${v}">${v}</button>`).join('')}</div>
+    <p class="small" data-rpetext style="margin-top:6px">${esc(rpeText(s))}</p>
+    ${rows ? `<h3 style="margin-top:12px">Tid i pulszoner</h3><div class="zrows">${rows.map(([l, sec]) => `<span>${l}</span><div class="track0"><div class="bar" style="width:${(sec/zt.tot*100).toFixed(1)}%"></div></div><span>${fmtClock(sec)}</span>`).join('')}</div>
+      <p class="muted small" style="margin-top:6px">Olympiatoppens I-skala i procent av maxpuls ${mx}: I1 55–72, I2 72–82, I3 82–87, I4 87–92, I5 över 92.</p>`
+      : `<p class="muted small" style="margin-top:10px">${mx ? 'Ingen puls registrerad under passet.' : 'Ange maxpuls under Inställningar för att se tid i pulszoner.'}</p>`}
+  </div>`;
+}
+function goalHTML(s){
+  const tg = s.target, r = s.summary.targetResult;
+  if (!tg) return '';
+  const res = r && r.reached ? (tg.type === 'dist' ? fmtTime(r.time) : `${fmtInt(r.dist)} m`) : 'Målet nåddes inte';
+  const g = s.ghostRef;
+  let txt = '';
+  if (g && g.result && r && r.reached) {
+    const better = tg.type === 'dist' ? r.time < g.result.time : r.dist > g.result.dist;
+    txt = tg.type === 'dist'
+      ? `${fmtNum1(Math.abs(r.time - g.result.time))} s ${r.time < g.result.time ? 'snabbare' : 'långsammare'} än spökåkaren (${fmtTime(g.result.time)}, ${fmtDate(g.date)}).`
+      : `${fmtInt(Math.abs(r.dist - g.result.dist))} m ${r.dist >= g.result.dist ? 'längre' : 'kortare'} än spökåkaren (${fmtInt(g.result.dist)} m, ${fmtDate(g.date)}).`;
+    if (better) txt += ' Nu är det här passet spökåkaren.';
+  } else if (r && r.reached) txt = 'Inget tidigare pass med samma mål. Det här passet blir spökåkaren nästa gång.';
+  return `<div class="card"><h3>Mål: ${esc(fmtGoal(tg))}</h3><div class="kv"><div><div class="k">Resultat</div><div class="v">${esc(res)}</div></div></div>
+    <p class="muted small" style="margin-top:4px">${esc(txt)}</p></div>`;
+}
+
+/* ============================================================ Effektkurva och personbästa */
+const MMP_D = [10,30,60,120,300,600,1200,1800,3600];
+const PB_D = [500,1000,2000,5000,10000];
+const fmtDur = d => d < 60 ? `${d} s` : `${d/60} min`;
+function mmpOf(sm){ const o = {}; for (const d of MMP_D) { const v = bestWindow(sm, d); if (v > 0) o[d] = v; } return o; }
+function bestDistTime(sm, D){
+  let best = null, j = 0;
+  for (let i=0; i<sm.length; i++) {
+    if (j <= i) j = i + 1;
+    while (j < sm.length && sm[j].d - sm[i].d < D) j++;
+    if (j >= sm.length) break;
+    const a = sm[j-1], b = sm[j], need = sm[i].d + D, f = b.d > a.d ? (need - a.d)/(b.d - a.d) : 1;
+    const tt = a.t + f*(b.t - a.t) - sm[i].t;
+    if (tt > 0 && (best == null || tt < best)) best = tt;
+  }
+  return best == null ? null : r1(best);
+}
+function bestDistsOf(sm){ const o = {}, last = sm[sm.length-1]; for (const D of PB_D) if (last && last.d >= D) { const v = bestDistTime(sm, D); if (v) o[D] = v; } return o; }
+function recordsFrom(list){
+  const mmp = {}, dist = {};
+  for (const s of list) {
+    const m = s.summary; if (!m || s.draft) continue;
+    for (const d of MMP_D) { const v = m.mmp && m.mmp[d]; if (v && (!mmp[d] || v > mmp[d].v)) mmp[d] = { v, date:s.start }; }
+    for (const D of PB_D) { const v = m.bestD && m.bestD[D]; if (v && (!dist[D] || v < dist[D].v)) dist[D] = { v, date:s.start }; }
+  }
+  return { mmp, dist };
+}
+function newRecords(s, all){
+  const prev = recordsFrom(all.filter(x => x.id !== s.id && x.summary && x.start < s.start && sameSrc(x, s)));
+  const out = [], m = s.summary;
+  for (const d of MMP_D) { const v = m.mmp && m.mmp[d]; if (v && (!prev.mmp[d] || v > prev.mmp[d].v)) out.push({ label:`${fmtDur(d)}: ${v} W`, prev: prev.mmp[d] ? `${prev.mmp[d].v} W` : null }); }
+  for (const D of PB_D) { const v = m.bestD && m.bestD[D]; if (v && (!prev.dist[D] || v < prev.dist[D].v)) out.push({ label:`${fmtInt(D)} m: ${fmtTime(v)}`, prev: prev.dist[D] ? fmtTime(prev.dist[D].v) : null }); }
+  return { out, prev };
+}
+function drawMMP(canvas, curves){
+  if (!canvas) return;
+  const xs = MMP_D.map(d => Math.log10(d));
+  const vals = curves.flatMap(c => MMP_D.map(d => c.mmp[d]).filter(v => v > 0));
+  const lo = vals.length ? Math.floor(Math.min(...vals)*0.85) : 0, hi = vals.length ? Math.ceil(Math.max(...vals)*1.08) : 1;
+  drawChart(canvas, curves.map((c, i) => ({ pts: MMP_D.map((d, k) => [xs[k], c.mmp[d] > 0 ? c.mmp[d] : null]), color:c.color, width:2.5, dash:c.dash, min:lo, max:hi, label: i === 0 })),
+    { xmin: xs[0], xmax: xs[xs.length-1], xticks: [10,60,300,1200,3600].map(d => [Math.log10(d), fmtDur(d)]) });
+}
+
+/* ============================================================ Historik: vecka, bana och rekord */
+function isoWeek(dt){
+  const d = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate())), day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const y0 = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return [d.getUTCFullYear(), Math.ceil(((d - y0)/86400000 + 1)/7)];
+}
+function weeklyRows(list){
+  const mx = maxHr(), map = new Map();
+  for (const s of list) {
+    if (!s.summary || s.draft) continue;
+    const [y, w] = isoWeek(new Date(s.start)), k = `${y}-${pad(w)}`;
+    const o = map.get(k) || { k, w, n:0, time:0, srpe:0, srpeN:0, easy:0, hard:0, z:0 };
+    o.n++; o.time += s.summary.duration || 0;
+    if (s.rpe) { o.srpe += s.rpe*s.summary.duration/60; o.srpeN++; }
+    const zt = zoneTimes(s.samples, mx);
+    if (zt) { o.easy += zt.z[0] + zt.z[1]; o.hard += zt.z[2] + zt.z[3] + zt.z[4]; o.z += zt.tot; }
+    map.set(k, o);
+  }
+  return [...map.values()].sort((a, b) => b.k.localeCompare(a.k)).slice(0, 8);
+}
+function prefList(all){
+  const src = all.some(s => s.summary && s.source !== 'demo') ? 'pm5' : 'demo';
+  return { src, L: all.filter(s => s.summary && !s.draft && (s.source === 'demo') === (src === 'demo')) };
+}
+function histExtrasHTML(all){
+  const { src, L } = prefList(all), badge = src === 'demo' ? '<span class="badge">demo</span>' : '';
+  const recs = recordsFrom(L), wk = weeklyRows(L);
+  let h = '';
+  const c = settings.course;
+  if (c && c.startedAt) {
+    const b = courseBase[src], i = cpIndex(b.dist), next = COURSE.cps[Math.min(i+1, COURSE.cps.length-1)];
+    h += `<div class="card"><h3>Vasaloppet hemma${badge}</h3><div class="track">${trackSVG({ me: Math.min(1, b.dist/COURSE.total), ticks: courseTicks(), pose:true, label:'Vasaloppet' })}</div>
+      <p class="small" style="margin-top:4px">${fmtKm(Math.min(b.dist, COURSE.total))} km av 90 på ${b.n} pass och ${fmtClock(b.time)}. ${b.dist >= COURSE.total ? 'I mål i Mora!' : `Senast passerat: ${esc(COURSE.cps[i][0])}. ${fmtKm(next[1] - b.dist)} km kvar till ${esc(next[0])}.`}</p></div>`;
+  }
+  if (wk.length) h += `<div class="card"><h3>Belastning per vecka${badge}</h3><div class="tablewrap"><table>
+      <tr><th>Vecka</th><th>Pass</th><th>Tid</th><th>sRPE</th><th>I1–I2</th><th>I3–I5</th></tr>
+      ${wk.map(o => `<tr><td>v. ${o.w}</td><td>${o.n}</td><td>${fmtClock(o.time)}</td><td>${o.srpeN ? Math.round(o.srpe) + (o.srpeN < o.n ? '*' : '') : '–'}</td><td>${o.z ? Math.round(o.easy/o.z*100) + ' %' : '–'}</td><td>${o.z ? Math.round(o.hard/o.z*100) + ' %' : '–'}</td></tr>`).join('')}
+    </table></div><p class="muted small" style="margin-top:6px">sRPE är upplevd ansträngning gånger minuter, summerat per vecka. En stjärna betyder att något pass saknar RPE. Zonandelarna kräver maxpuls.</p></div>`;
+  if (MMP_D.some(d => recs.mmp[d])) h += `<div class="card"><h3>Effektkurva och personbästa${badge}</h3><canvas class="chart" id="histMMP"></canvas>
+      <div class="legend"><span><i style="background:var(--power)"></i>Bästa någonsin</span><span><i style="background:var(--pace)"></i>Senaste sex veckorna</span></div>
+      <div class="tablewrap" style="margin-top:8px"><table><tr><th>Varaktighet</th><th>Watt</th><th>Datum</th></tr>
+      ${MMP_D.filter(d => recs.mmp[d]).map(d => `<tr><td>${fmtDur(d)}</td><td>${recs.mmp[d].v}</td><td>${fmtDateShort(recs.mmp[d].date)}</td></tr>`).join('')}</table></div>
+      ${PB_D.some(D => recs.dist[D]) ? `<div class="tablewrap" style="margin-top:8px"><table><tr><th>Distans</th><th>Tid</th><th>Tempo</th><th>Datum</th></tr>
+      ${PB_D.filter(D => recs.dist[D]).map(D => `<tr><td>${fmtInt(D)} m</td><td>${fmtTime(recs.dist[D].v)}</td><td>${fmtPace(recs.dist[D].v/D*500)}</td><td>${fmtDateShort(recs.dist[D].date)}</td></tr>`).join('')}</table></div>` : ''}
+      <p class="muted small" style="margin-top:6px">Bästa snitteffekt och snabbaste tid inom något pass, inte bara hela pass.</p></div>`;
+  return h;
+}
+function drawHistExtras(all){
+  const { L } = prefList(all), cut = new Date(Date.now() - 42*86400000).toISOString();
+  const toMap = r => Object.fromEntries(Object.entries(r.mmp).map(([k, v]) => [k, v.v]));
+  drawMMP($('#histMMP'), [{ mmp: toMap(recordsFrom(L)), color: cssVar('--power') }, { mmp: toMap(recordsFrom(L.filter(s => s.start >= cut))), color: cssVar('--pace'), dash:[5,4] }]);
+}
+
+/* ============================================================ Nya avsnitt i analysfilerna */
+function goalMd(s){
+  const tg = s.target; if (!tg) return [];
+  const r = s.summary.targetResult, g = s.ghostRef;
+  const rows = [['Mål', `${fmtGoal(tg)} (${tg.src === 'pm5' ? 'programmerat på PM5' : 'valt i appen'})`],
+    ['Resultat', r && r.reached ? (tg.type === 'dist' ? fmtTime(r.time) : `${fmtInt(r.dist)} m`) : 'målet nåddes inte']];
+  if (g && g.result && r && r.reached) rows.push(['Spökåkare, bästa tidigare pass med samma mål', tg.type === 'dist'
+    ? `${fmtTime(g.result.time)} (${fmtDate(g.date)}), skillnad ${signedNum(r.time - g.result.time, 1)} s`
+    : `${fmtInt(g.result.dist)} m (${fmtDate(g.date)}), skillnad ${signedNum(r.dist - g.result.dist, 0)} m`]);
+  return ['', '## Mål och spökåkare', mdTable(['Mått','Värde'], rows)];
+}
+function zonesMd(s){
+  const mx = maxHr(), zt = zoneTimes(s.samples, mx);
+  if (!zt || !zt.tot) return [];
+  return ['', `## Tid i pulszoner (Olympiatoppens I-skala, maxpuls ${mx})`, mdTable(['Zon','% av maxpuls','Tid','Andel'],
+    ZONES.map((z, i) => [z[0], zoneRange(z), fmtClock(zt.z[i]), `${Math.round(zt.z[i]/zt.tot*100)} %`])
+      .concat([['Under I1', 'under 55', fmtClock(zt.under), `${Math.round(zt.under/zt.tot*100)} %`]]))];
+}
+function mmpMd(s, all){
+  const { prev } = newRecords(s, all), m = s.summary;
+  const note = (v, p, better) => p ? (better ? 'nytt personbästa' : '') : 'första mätningen';
+  const rows = MMP_D.filter(d => m.mmp && m.mmp[d]).map(d => [fmtDur(d), m.mmp[d], prev.mmp[d] ? prev.mmp[d].v : null, note(m.mmp[d], prev.mmp[d], prev.mmp[d] && m.mmp[d] > prev.mmp[d].v)]);
+  const drows = PB_D.filter(D => m.bestD && m.bestD[D]).map(D => [`${fmtInt(D)} m`, fmtTime(m.bestD[D]), prev.dist[D] ? fmtTime(prev.dist[D].v) : null, note(m.bestD[D], prev.dist[D], prev.dist[D] && m.bestD[D] < prev.dist[D].v)]);
+  return [
+    ...(rows.length ? ['', '## Effektkurva, bästa snitteffekt per varaktighet', mdTable(['Varaktighet','Watt detta pass','Personbästa före passet','Not'], rows)] : []),
+    ...(drows.length ? ['', '## Bästa tid på distans inom passet', mdTable(['Distans','Tid detta pass','Personbästa före passet','Not'], drows)] : [])
+  ];
+}
+function courseMd(s, all){
+  const c = settings.course;
+  if (!c || !c.startedAt || s.start < c.startedAt) return [];
+  const dist = all.filter(x => x.summary && !x.draft && sameSrc(x, s) && x.start >= c.startedAt && x.start <= s.start).reduce((a, x) => a + (x.summary.distance || 0), 0);
+  return ['', '## Vasaloppet hemma', `${fmtKm(Math.min(dist, COURSE.total))} km av 90 avklarade efter det här passet, räknat från ${fmtDate(c.startedAt)}.`];
+}
+function histExtrasMd(all){
+  const { L } = prefList(all), recs = recordsFrom(L), wk = weeklyRows(L), out = [];
+  if (MMP_D.some(d => recs.mmp[d])) out.push('', '## Personbästa, effekt', mdTable(['Varaktighet','Watt','Datum'], MMP_D.filter(d => recs.mmp[d]).map(d => [fmtDur(d), recs.mmp[d].v, fmtDate(recs.mmp[d].date)])));
+  if (PB_D.some(D => recs.dist[D])) out.push('', '## Personbästa, distans', mdTable(['Distans','Tid','Datum'], PB_D.filter(D => recs.dist[D]).map(D => [`${fmtInt(D)} m`, fmtTime(recs.dist[D].v), fmtDate(recs.dist[D].date)])));
+  if (wk.length) out.push('', '## Belastning per vecka (nyast först)', mdTable(['Vecka','Pass','Tid','sRPE','Pass med RPE','Andel I1–I2','Andel I3–I5'],
+    wk.map(o => [o.k, o.n, fmtClock(o.time), o.srpeN ? Math.round(o.srpe) : null, `${o.srpeN} av ${o.n}`, o.z ? `${Math.round(o.easy/o.z*100)} %` : null, o.z ? `${Math.round(o.hard/o.z*100)} %` : null])));
+  return out;
 }
 
 /* ============================================================ Rendering */
@@ -858,6 +1298,7 @@ function renderLive(){
   set('v-peak', live.peakForce ? live.peakForce.toFixed(0) : '–');
   set('v-ratio', live.driveTime && live.recoveryTime ? `1 : ${(live.recoveryTime/live.driveTime).toFixed(1)}` : '–');
   set('v-drag', live.dragFactor ? String(live.dragFactor) : '–');
+  renderTrack();
 }
 
 function summaryHTML(s, ctx){
@@ -888,6 +1329,11 @@ function summaryHTML(s, ctx){
       <p class="muted small" style="margin-top:4px">${esc(effSummaryText(m))}</p></div>
     </div>
   </div>
+  ${goalHTML(s)}
+  ${loadHTML(s)}
+  <div class="card"><h3>Effektkurva</h3><canvas class="chart" data-chart="mmp"></canvas>
+    <div class="legend"><span><i style="background:var(--power)"></i>Detta pass</span><span><i style="background:var(--muted)"></i>Personbästa före passet</span></div>
+    <div data-pb></div></div>
   ${ins.length ? `<div class="card"><h3>Vad datan visar</h3>${ins.map(i => `<div class="insight"><div class="t"><span>${i.t}</span><span>${esc(i.v)}</span></div><p>${esc(i.p)}</p></div>`).join('')}</div>` : ''}
   <div class="card">
     <h3>Watt och puls</h3><canvas class="chart" data-chart="pw"></canvas>
@@ -927,6 +1373,22 @@ function renderSummary(el, s, ctx, onClose){
   shareBtn.onclick = async () => { await syncNote(); const f = await buildPassFile(s); shareOrDownload(f.base, f.text); };
   el.querySelector('[data-act=md]').onclick = async () => { await syncNote(); const f = await buildPassFile(s); download(f.base + '.md', f.text, 'text/markdown'); };
   el.querySelector('[data-act=csv]').onclick = () => exportCSV(s);
+  const rpeEl = el.querySelector('[data-rpe]');
+  rpeEl.querySelectorAll('button').forEach(b => b.onclick = async () => {
+    s.rpe = Number(b.dataset.v);
+    rpeEl.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    el.querySelector('[data-rpetext]').textContent = rpeText(s);
+    try { await DB.put(s); } catch(e) {}
+  });
+  (async () => {
+    let all = []; try { all = await DB.all(); } catch(e) {}
+    const { out, prev } = newRecords(s, all), pbEl = el.querySelector('[data-pb]');
+    if (pbEl) pbEl.innerHTML = out.length
+      ? `<h3 style="margin-top:10px">Nya personbästa</h3><ul class="pblist">${out.map(o => `<li>${esc(o.label)} <span class="muted">${o.prev ? `(förra ${esc(o.prev)})` : '(första mätningen)'}</span></li>`).join('')}</ul>`
+      : '<p class="muted small" style="margin-top:8px">Inga nya personbästa i det här passet.</p>';
+    const pm = {}; for (const d of MMP_D) if (prev.mmp[d]) pm[d] = prev.mmp[d].v;
+    drawMMP(el.querySelector('[data-chart=mmp]'), [{ mmp: s.summary.mmp || {}, color: cssVar('--power') }, { mmp: pm, color: cssVar('--muted'), dash:[5,4] }]);
+  })();
   const del = el.querySelector('[data-act=delete]');
   if (del) del.onclick = async () => { if (confirm('Radera passet permanent?')) { await DB.del(s.id); await rebuildRefs(); toast('Passet är raderat'); onClose(); } };
   requestAnimationFrame(() => drawSummaryCharts(el, s));
@@ -972,10 +1434,11 @@ async function renderHistory(){
   list.innerHTML = `
     <div class="card"><h3>Utveckling, snittwatt och meter per pulsslag</h3><canvas class="chart" id="histTrend"></canvas>
       <div class="legend"><span><i style="background:var(--power)"></i>Snittwatt</span><span><i style="background:var(--accent)"></i>Meter per pulsslag</span></div></div>
+    ${histExtrasHTML(all)}
     ${all.map(s => { const m = s.summary; return `
       <button class="hist-item" data-id="${esc(s.id)}">
         <div><div class="d">${esc(fmtDate(s.start))}${s.source==='demo' ? '<span class="badge">demo</span>' : ''}</div>
-        <div class="m">${Math.round(m.distance)} m på ${fmtTime(m.duration)}${m.avgHr ? `, puls ${Math.round(m.avgHr)}` : ''}${m.mpb ? `, ${fmtMpb(m.mpb)} m/slag` : ''}${m.eff && m.eff.index != null ? ` (${fmtPct(m.eff.index)})` : ''}</div></div>
+        <div class="m">${Math.round(m.distance)} m på ${fmtTime(m.duration)}${m.avgHr ? `, puls ${Math.round(m.avgHr)}` : ''}${m.mpb ? `, ${fmtMpb(m.mpb)} m/slag` : ''}${m.eff && m.eff.index != null ? ` (${fmtPct(m.eff.index)})` : ''}${s.rpe ? `, RPE ${s.rpe}` : ''}</div></div>
         <div class="r">${fmtPace(m.avgPace)}<div class="m">${m.avgPower ?? '–'} W</div></div>
       </button>`; }).join('')}`;
   list.querySelectorAll('.hist-item').forEach(b => b.onclick = () => openHistory(b.dataset.id));
@@ -983,6 +1446,7 @@ async function renderHistory(){
     { pts: chrono.map((s,i) => [i, s.summary.avgPower || null]), color: cssVar('--power') },
     { pts: chrono.map((s,i) => [i, s.summary.mpb || null]), color: cssVar('--accent'), fmt: v => fmtMpb(v) }
   ], { xfmt: v => v === 0 ? 'första' : 'senaste', empty:'Behöver minst två pass' }));
+  requestAnimationFrame(() => drawHistExtras(all));
 }
 async function openHistory(id){
   const s = await DB.get(id); if (!s) return;
@@ -998,13 +1462,15 @@ Analysera passet ärligt och konkret:
 - Vad passet var (tolka typ av pass utifrån struktur, intensitet och min anteckning).
 - Vad datan avslöjar: effektfördelning och fall över tid, pulsdrift, val av takt och arbete per drag, förändringar i kraftkurvan som tecken på teknisk trötthet.
 - Effektivitet: meter per pulsslag och hur den står sig mot mina tidigare minuter vid samma effekt.
+- Belastning: upplevd ansträngning (Borg CR10), sRPE och tid i pulszoner enligt Olympiatoppens I-skala.
+- Mål, spökåkare och personbästa, om sådana finns i datan.
 - Hur passet står sig mot historiken: trender, jämförbara pass, framsteg eller varningstecken.
 - Två till tre konkreta, genomförbara råd för kommande pass.
 
 Använd siffror ur datan när du argumenterar. Var tydlig med osäkerhet när underlaget är tunt, till exempel om puls saknas eller historiken är kort. Hitta inte på värden som inte finns i datan. Svara på svenska, sakligt och koncist.`;
 const HIST_PROMPT = `Du är en erfaren tränare inom längdskidåkning och SkiErg-träning med gedigen kunskap i träningsfysiologi. Filen innehåller alla mina sparade SkiErg-pass.
 
-Analysera min långsiktiga utveckling: trender i effekt, tempo och puls vid jämförbar belastning, träningsvolym och fördelning mellan passtyper över tid, samt tecken på framsteg, stagnation eller överbelastning. Föreslå hur jag bör lägga upp de kommande veckorna. Använd siffror ur datan, var tydlig med osäkerhet och hitta inte på värden. Svara på svenska.`;
+Analysera min långsiktiga utveckling: trender i effekt, tempo och puls vid jämförbar belastning, träningsvolym och fördelning mellan passtyper över tid, samt tecken på framsteg, stagnation eller överbelastning. Använd veckobelastningen (sRPE), zonfördelningen och personbästa. Föreslå hur jag bör lägga upp de kommande veckorna. Använd siffror ur datan, var tydlig med osäkerhet och hitta inte på värden. Svara på svenska.`;
 const cell = v => v==null || v==='' || (typeof v==='number' && !isFinite(v)) ? '–' : String(v).replace(/\|/g,'/').replace(/\s*\n\s*/g,' ');
 const mdRow = c => '| ' + c.map(cell).join(' | ') + ' |';
 const mdTable = (head, rows) => [mdRow(head), '|' + head.map(()=>' --- ').join('|') + '|', ...rows.map(mdRow)].join('\n');
@@ -1016,18 +1482,20 @@ function aboutLines(){
   return L.length ? ['', '## Om mig', ...L] : [];
 }
 function histTable(list){
-  return mdTable(['Datum','Tid','Meter','Tempo /500 m','Watt','Takt','Snittpuls','Maxpuls','Effektförändring','Pulsdrift','Bästa 60 s (W)','m/slag','Effektivitet','Anteckning'],
+  return mdTable(['Datum','Tid','Meter','Tempo /500 m','Watt','Takt','Snittpuls','Maxpuls','Effektförändring','Pulsdrift','Bästa 60 s (W)','m/slag','Effektivitet','RPE','sRPE','Anteckning'],
     list.map(s => { const m = s.summary; return [
       fmtDate(s.start) + (s.source==='demo' ? ' (demo)' : ''), fmtTime(m.duration), Math.round(m.distance), fmtPace(m.avgPace),
       m.avgPower, r1(m.avgSpm), m.avgHr ? Math.round(m.avgHr) : null, m.maxHr,
       m.fade!=null ? signed(m.fade) : null, m.decoupling!=null ? signed(m.decoupling) : null, m.best60,
       fmtMpb(m.mpb), m.eff && m.eff.index != null ? fmtPct(m.eff.index) : null,
+      s.rpe || null, s.rpe ? Math.round(s.rpe*m.duration/60) : null,
       s.note ? s.note.slice(0,120) : null ]; }));
 }
 async function buildPassFile(s){
   const m = s.summary;
   let hist = [];
-  try { hist = (await DB.all()).filter(x => x.id !== s.id && x.summary && x.start < s.start).sort((a,b) => b.start.localeCompare(a.start)).slice(0,25); } catch(e) {}
+  let all = []; try { all = await DB.all(); } catch(e) {}
+  hist = all.filter(x => x.id !== s.id && x.summary && x.start < s.start).sort((a,b) => b.start.localeCompare(a.start)).slice(0,25);
   const c = m.curve, splits = (s.splits || []).filter(x => x.time || x.power);
   const text = [
     `# SkiErg-pass ${fmtDate(s.start)}`, '',
@@ -1043,6 +1511,8 @@ async function buildPassFile(s){
       ['Arbete per drag (J)', m.avgWork ? Math.round(m.avgWork) : null], ['Kalorier', m.calories], ['Bästa 60 s (W)', m.best60],
       ['Meter per pulsslag, arbetsdelen', fmtMpb(m.mpb)],
       ['Effektivitet mot historiken', m.eff && m.eff.index != null ? `${fmtPct(m.eff.index)}, ${ZONE_TEXT[effZone(m.eff.index)].toLowerCase()} (${m.eff.compared} minuter jämförda)` : 'Ingen jämförelse än, för lite historik'],
+      ['Upplevd ansträngning (Borg CR10)', s.rpe ? `${s.rpe}, ${RPE_TEXT[s.rpe].toLowerCase()}` : 'ej angiven'],
+      ['Belastning, sRPE (RPE × minuter)', s.rpe ? Math.round(s.rpe*m.duration/60) : null],
       ['Hur passet avslutades', s.endReason]
     ]),
     '', '## Härledda nyckeltal',
@@ -1055,6 +1525,7 @@ async function buildPassFile(s){
       ['Meter per pulsslag', fmtMpb(m.mpb), `Distans delat med antal pulsslag. Räknas bara på minuter efter ${EFF.warmup/60} minuters uppvärmning, med minst ${EFF.minP} W, puls och högst 15 % effektändring mot minuten före (${(m.effMin||[]).length} minuter)`],
       ['Effektivitet mot historiken', m.eff && m.eff.index != null ? fmtPct(m.eff.index) : null, `Snitt per minut av meter per pulsslag jämfört med medianen för mina tidigare minuter vid samma effekt (±10 %). Inom ±${effBand()} % räknas som i nivå`]
     ]),
+    ...goalMd(s), ...zonesMd(s), ...mmpMd(s, all), ...courseMd(s, all),
     '', '## Per minut',
     mdTable(['Minut','Watt','Takt (spm)','Puls','Tempo /500 m','m/slag'], m.perMin.map(x => [x.min, x.p, x.spm, x.hr, fmtPace(x.pace), x.mpb != null ? fmtMpb(x.mpb) : null])),
     ...(splits.length ? ['', '## Splittar', mdTable(['Nr','Tid','Meter','Tempo /500 m','Watt','Takt','Puls'],
@@ -1069,7 +1540,7 @@ async function exportHistoryMd(){
   try { all = (await DB.all()).filter(s => s.summary).sort((a,b) => a.start.localeCompare(b.start)); } catch(e) {}
   if (!all.length) { toast('Det finns inga pass att exportera'); return; }
   const text = [`# SkiErg-historik, ${all.length} pass`, '', `Exporterad från SkiErg Live ${fmtDate(new Date().toISOString())}.`,
-    '', '## Instruktion', HIST_PROMPT, ...aboutLines(), '', '## Alla pass (äldst först)', histTable(all), ''].join('\n');
+    '', '## Instruktion', HIST_PROMPT, ...aboutLines(), '', '## Alla pass (äldst först)', histTable(all), ...histExtrasMd(all), ''].join('\n');
   shareOrDownload(`skierg_historik_${fileStamp(new Date().toISOString())}`, text);
 }
 function canShareFiles(){
@@ -1204,7 +1675,7 @@ function pkt(n){
 function startDemo(){
   if (connState === 'pm5' || connState === 'reconnecting') { toast('Koppla från PM5 först'); return; }
   stopDemo(true);
-  sim.S = { phase:'pre', pre:4, post:0, t:0, dist:0, cal:0, hr:88, P:0, spm:40, strokes:0, nextStroke:0.5, dur:480,
+  sim.S = { base: 168 + Math.random()*24, phase:'pre', pre:4, post:0, t:0, dist:0, cal:0, hr:88, P:0, spm:40, strokes:0, nextStroke:0.5, dur:480,
     splitN:0, splitT0:0, splitD0:0, splitAcc:{ p:0, spm:0, hr:0, n:0, cal0:0 }, acc:{ p:0, spm:0, hr:0, n:0, minHr:999, maxHr:0 } };
   setConn('demo'); logMsg('Demopass startat');
   sim.timer = setInterval(simTick, 250);
@@ -1216,7 +1687,7 @@ function simTick(){
   if (S.phase === 'end') { if (--S.post <= 0) stopDemo(); return; }
   S.t += 1;
   const frac = Math.min(1, S.t/S.dur), surge = (S.t % 120) >= 100 ? 55 : 0;
-  S.P = Math.max(40, 180*(1 - 0.10*frac) + surge + (Math.random() - 0.5)*18);
+  S.P = Math.max(40, S.base*(1 - 0.10*frac) + surge + (Math.random() - 0.5)*18);
   S.dist += Math.cbrt(S.P/2.8);
   S.cal += ((4*S.P*0.8604) + 300) / 3600;
   S.hr += (92 + (S.P - 40)*0.42 + 22*frac - S.hr) * 0.06;
@@ -1230,8 +1701,8 @@ function simTick(){
   if (S.t >= S.dur) { if (S.t - S.splitT0 > 5) simSplit(S); simGeneral(S, 10); simSummary(S); S.phase = 'end'; S.post = 14; }
 }
 function simGeneral(S, ws){
-  const q = pkt(19); q.w24(0, S.t*100); q.w24(3, S.dist*10); q.w8(6, 0); q.w8(7, 255); q.w8(8, ws); q.w8(9, ws===1 ? 1 : 0);
-  q.w8(10, ws===1 ? 2 : 0); q.w24(11, S.dist); q.w24(14, 0); q.w8(17, 0); q.w8(18, 105); dispatch(CH.general, q.dv);
+  const q = pkt(19); q.w24(0, S.t*100); q.w24(3, S.dist*10); q.w8(6, 4); q.w8(7, 255); q.w8(8, ws); q.w8(9, ws===1 ? 1 : 0);
+  q.w8(10, ws===1 ? 2 : 0); q.w24(11, S.dist); q.w24(14, S.dur*100); q.w8(17, 0); q.w8(18, 105); dispatch(CH.general, q.dv);
 }
 function simAdd1(S){
   const v = S.P ? Math.cbrt(S.P/2.8) : 0, q = pkt(17);
@@ -1286,7 +1757,7 @@ function show(view){
   document.querySelectorAll('nav.bottom button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   if (view === 'history') renderHistory();
   if (view === 'log') renderLog();
-  if (view === 'live') { renderLive(); drawLiveChart(); drawForce(); }
+  if (view === 'live') { renderLive(); drawLiveChart(); drawForce(); trackT = 0; renderTrack(); renderZoneLive(); }
   window.scrollTo(0,0);
 }
 // 1 Hz: livegraf och inaktivitetskontroll
@@ -1296,7 +1767,7 @@ setInterval(() => {
     while (liveBuf.length > 190) liveBuf.shift();
     if (currentView === 'live') drawLiveChart();
   }
-  if (currentView === 'live') renderEffLive();
+  if (currentView === 'live') { renderEffLive(); renderZoneLive(); renderTrack(); }
   if (rec && !finTimer && Date.now() - rec.lastChange > 120000) finalize('ingen aktivitet på två minuter');
 }, 1000);
 window.addEventListener('beforeunload', e => { if (rec) { e.preventDefault(); e.returnValue = ''; } });
@@ -1327,6 +1798,28 @@ window.addEventListener('resize', () => { if (currentView === 'live') { drawLive
   $('#fileImport').onchange = e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = ''; };
   $('#btnWipe').onclick = async () => { if (confirm('Radera alla sparade pass permanent?')) { await DB.clear(); await rebuildRefs(); toast('Alla pass är raderade'); } };
   document.querySelectorAll('nav.bottom button').forEach(b => b.onclick = () => show(b.dataset.view));
+  $('#tgtMode').value = settings.target.mode; $('#tgtDist').value = settings.target.dist; $('#tgtTime').value = settings.target.time;
+  const syncTgtUI = () => { const m = settings.target.mode;
+    $('#tgtDistWrap').classList.toggle('hidden', m !== 'dist'); $('#tgtTimeWrap').classList.toggle('hidden', m !== 'time');
+    $('#btnCourseReset').classList.toggle('hidden', m !== 'vasa'); };
+  syncTgtUI();
+  const onTgt = async () => {
+    settings.target = { mode: $('#tgtMode').value, dist: Number($('#tgtDist').value) || 5000, time: Number(String($('#tgtTime').value).replace(',', '.')) || 30 };
+    if (settings.target.mode === 'vasa' && !(settings.course && settings.course.startedAt)) {
+      settings.course = { startedAt: rec ? rec.start : new Date().toISOString() }; await rebuildCourse();
+      toast('Vasaloppet hemma har startat i Berga by');
+    }
+    saveSettings(); syncTgtUI();
+    if (rec) { rec.target = activeTarget(); await loadGhost(); }
+    trackT = 0; renderTrack();
+  };
+  ['#tgtMode', '#tgtDist', '#tgtTime'].forEach(id => $(id).onchange = onTgt);
+  $('#btnTgt').onclick = () => $('#tgtPanel').classList.toggle('hidden');
+  $('#btnCourseReset').onclick = async () => {
+    if (!confirm('Börja om Vasaloppet från start? Tidigare pass räknas inte längre.')) return;
+    settings.course = { startedAt: rec ? rec.start : new Date().toISOString() }; saveSettings();
+    await rebuildCourse(); lastCp = null; trackT = 0; renderTrack(); toast('Vasaloppet börjar om i Berga by');
+  };
   setConn('none'); show('live'); renderEffLive();
 })();
 </script>
