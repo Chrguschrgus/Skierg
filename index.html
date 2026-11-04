@@ -125,6 +125,13 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--surface);bord
 nav.bottom button{flex:1;background:none;border:0;color:var(--muted);font-size:14px;font-weight:600;padding:13px 4px;border-top:3px solid transparent}
 nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
 
+.effwrap{display:flex;align-items:center;gap:6px 16px;flex-wrap:wrap}
+.effgauge{flex:1 1 220px;max-width:300px}
+.effgauge svg{width:100%;height:auto;display:block}
+.efftext{flex:1 1 180px}
+.efftext .k{font-size:13px;color:var(--muted)}
+.efftext .v{font-family:var(--num);font-size:32px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.efftext .z{font-weight:600;margin-top:2px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));background:var(--text);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s;z-index:20;pointer-events:none;max-width:90vw}
 .toast.show{opacity:1}
 </style>
@@ -161,6 +168,19 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
         <div class="w"><div class="k">Watt</div><div class="v" id="v-power">–</div></div>
         <div class="s"><div class="k">Takt</div><div class="v" id="v-spm">–</div></div>
         <div class="h"><div class="k">Puls</div><div class="v" id="v-hr">–</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Meter per pulsslag mot din historik</h3>
+      <div class="effwrap">
+        <div class="effgauge" id="gaugeLive"></div>
+        <div class="efftext">
+          <div class="k">Senaste minuten</div>
+          <div class="v"><span id="v-mpb">–</span> <span class="u muted" style="font-size:15px;font-family:var(--body)">m/slag</span></div>
+          <div class="z" id="v-effzone"></div>
+          <div class="muted small" id="v-effstate">Startar när ett pass spelas in</div>
+        </div>
       </div>
     </div>
 
@@ -218,6 +238,12 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
       <input id="setMaxHr" type="number" inputmode="numeric" min="120" max="230" placeholder="t.ex. 188">
       <label for="setAbout">Bakgrund och mål (valfritt)</label>
       <textarea id="setAbout" placeholder="t.ex. Tränar inför Vasaloppet, 4–5 pass i veckan varav 2 på SkiErg"></textarea>
+    </div>
+    <div class="card">
+      <h2>Effektivitetsmätaren</h2>
+      <p class="muted small">Mätaren jämför meter per pulsslag med dina tidigare minuter vid samma effekt. Dagsform flyttar pulsen några procent, så en för snäv gräns reagerar mest på sömn och koffein.</p>
+      <label for="setEffBand">Gräns för "i nivå" (± procent)</label>
+      <input id="setEffBand" type="number" inputmode="decimal" min="1" max="10" step="0.5">
     </div>
     <div class="card">
       <h2>PM5</h2>
@@ -340,7 +366,7 @@ function smooth(a, k){
 }
 
 /* ============================================================ Inställningar */
-const DEFAULTS = { rate:2, maxHr:'', about:'' };
+const DEFAULTS = { rate:2, maxHr:'', about:'', effBand:3 };
 let settings = (() => { try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('skierg.settings') || '{}') }; } catch(e) { return { ...DEFAULTS }; } })();
 // Rensa bort API-nyckel från tidigare version
 if ('apiKey' in settings || 'model' in settings) { delete settings.apiKey; delete settings.model; try { localStorage.setItem('skierg.settings', JSON.stringify(settings)); } catch(e) {} }
@@ -471,7 +497,7 @@ function maybeSample(){
   if (live.elapsed - rec.lastSampleT >= 1) {
     rec.lastSampleT = live.elapsed;
     rec.samples.push({ t:+live.elapsed.toFixed(2), d:+(live.distance||0).toFixed(1), p:live.power||0, pace:live.pace||0,
-      spm:live.spm||0, hr:getHr(), cal:live.calories||0 });
+      spm:(live.spm > 0 && live.spm < 100) ? live.spm : 0, hr:getHr(), cal:live.calories||0 });
   }
 }
 function recStroke(s){
@@ -501,8 +527,11 @@ async function finalize(reason){
   s.end = new Date().toISOString(); s.endReason = reason;
   if (s.source !== 'demo' && live.machine != null) s.machine = machineName(live.machine);
   s.summary = computeSummary(s);
+  let all = []; try { all = await DB.all(); } catch(e) {}
+  s.summary.eff = sessionEff(s, all);
   try { await DB.put(s); toast('Passet är sparat'); } catch(e) { toast('Kunde inte spara passet: ' + e.message); }
   logMsg('Pass sparat (' + reason + ')');
+  await rebuildRefs();
   showLiveSummary(s);
 }
 function updateRecUI(){
@@ -543,6 +572,135 @@ function curveStats(curves){
   const peak = c => Math.max(...c), pos = c => c.indexOf(peak(c)) / (c.length-1);
   return { early, late, peakEarly:peak(early), peakLate:peak(late), posEarly:pos(early), posLate:pos(late) };
 }
+/* Meter per pulsslag. Måttet beror på intensiteten (farten växer med kubroten ur effekten,
+   pulsen ungefär linjärt från vilopuls), så jämförelsen görs alltid mot tidigare minuter vid samma effekt. */
+const EFF = { minP: 50, warmup: 180, range: 10 };
+const fmtMpb = v => v==null || !isFinite(v) ? '–' : v.toFixed(2).replace('.', ',');
+const fmtPct = v => v==null || !isFinite(v) ? '–' : `${v>0?'+':v<0?'−':''}${Math.abs(v).toFixed(1).replace('.', ',')} %`;
+const effBand = () => Math.max(0.5, Number(settings.effBand) || 3);
+function effZone(pct){ if (pct==null) return null; const b = effBand(); return pct < -b ? 'under' : pct > b ? 'over' : 'level'; }
+const ZONE_TEXT = { under:'Underpresterar', level:'I nivå', over:'Överpresterar' };
+const ZONE_COLOR = { under:'var(--power)', level:'var(--text)', over:'var(--accent)' };
+function median(a){ if (!a.length) return null; const v = [...a].sort((x,y)=>x-y), k = v.length >> 1; return v.length % 2 ? v[k] : (v[k-1] + v[k]) / 2; }
+function beatsAndDist(arr){
+  let dd = 0, beats = 0, n = 0;
+  for (let i=1; i<arr.length; i++) {
+    const a = arr[i-1], b = arr[i], dt = b.t - a.t;
+    if (dt <= 0 || dt > 3 || !(b.hr > 0)) continue;
+    dd += Math.max(0, b.d - a.d); beats += b.hr*dt/60; n++;
+  }
+  return { dd, beats, n };
+}
+// Minuter som duger: efter uppvärmningen, minst 50 W, puls i 90 % av minuten och högst 15 % effektändring mot föregående minut (pulsen släpar)
+function effMinutes(sm){
+  const buckets = {};
+  for (const x of sm) (buckets[Math.floor(x.t/60)] ||= []).push(x);
+  const out = []; let prevP = null;
+  for (const k of Object.keys(buckets).map(Number).sort((a,b)=>a-b)) {
+    const b = buckets[k], pw = b.map(x=>x.p).filter(v=>v>0), p = pw.length ? mean(pw) : 0;
+    const steady = prevP > 0 && Math.abs(p - prevP)/prevP <= 0.15;
+    prevP = p;
+    if (k*60 < EFF.warmup || p < EFF.minP || b.length < 40 || !steady) continue;
+    if (b.filter(x=>x.hr>0).length / b.length < 0.9) continue;
+    const bd = beatsAndDist(b);
+    if (bd.beats > 0) out.push({ min:k+1, p:Math.round(p), dd:r1(bd.dd), beats:r1(bd.beats) });
+  }
+  return out;
+}
+let effRefs = { pm5:[], demo:[] };
+// Demopass jämförs bara med demopass och riktiga pass bara med riktiga
+function refsFrom(sessions, kind, before){
+  const out = [];
+  for (const s of sessions) {
+    if (!s.summary || !s.summary.effMin) continue;
+    if ((s.source === 'demo') !== (kind === 'demo')) continue;
+    if (before && !(s.start < before)) continue;
+    for (const x of s.summary.effMin) if (x.beats > 0) out.push({ p:x.p, m:x.dd/x.beats });
+  }
+  return out;
+}
+function expectedMpb(refs, p){
+  for (const tol of [0.10, 0.20]) {
+    const c = refs.filter(r => Math.abs(r.p - p) <= tol*p);
+    if (c.length >= 5) return { e: median(c.map(r=>r.m)), n: c.length };
+  }
+  return null;
+}
+function sessionEff(s, sessions){
+  const refs = refsFrom(sessions.filter(x => x.id !== s.id), s.source === 'demo' ? 'demo' : 'pm5', s.start);
+  const ratios = [];
+  for (const x of (s.summary.effMin || [])) { const ex = expectedMpb(refs, x.p); if (ex && x.beats > 0) ratios.push(x.dd/x.beats/ex.e - 1); }
+  return { index: ratios.length >= 3 ? mean(ratios)*100 : null, compared: ratios.length, refMinutes: refs.length };
+}
+async function rebuildRefs(){
+  try { const all = await DB.all(); effRefs = { pm5: refsFrom(all, 'pm5'), demo: refsFrom(all, 'demo') }; } catch(e) {}
+}
+// Räknar om äldre pass med den nya modellen (och taktfiltret)
+async function migrateSummaries(){
+  let all = [];
+  try { all = await DB.all(); } catch(e) { return; }
+  const touched = [];
+  for (const s of all) {
+    if (!Array.isArray(s.samples) || !s.samples.length || s.draft) continue;
+    s.strokes ||= []; s.splits ||= []; s.curves ||= []; s.pm ||= {};
+    if (!s.summary || s.summary.v !== 2) { s.summary = computeSummary(s); touched.push(s); }
+    else if (!s.summary.eff) touched.push(s);
+  }
+  for (const s of touched) { s.summary.eff = sessionEff(s, all); try { await DB.put(s); } catch(e) {} }
+}
+function liveEff(){
+  if (!rec) return { state:'Startar när ett pass spelas in' };
+  const sm = rec.samples;
+  if (sm.length < 2) return { state:'Väntar på data' };
+  const tNow = sm[sm.length-1].t;
+  if (tNow < EFF.warmup) return { state:`Uppvärmning, mätaren startar efter ${Math.round(EFF.warmup/60)} minuter` };
+  let i = sm.length - 1;
+  while (i > 0 && tNow - sm[i-1].t <= 60) i--;
+  const win = sm.slice(i);
+  if (win.length < 40) return { state:'Väntar på en hel minut data' };
+  const pw = win.map(x=>x.p), p = mean(pw);
+  if (p < EFF.minP) return { state:'För låg effekt för att jämföra' };
+  if (win.filter(x=>x.hr>0).length < win.length*0.9) return { state:'Ingen puls, anslut pulsband' };
+  if (std(pw)/p > 0.25) return { state:'Ojämn effekt, mätaren väntar på jämnt arbete' };
+  const bd = beatsAndDist(win);
+  if (bd.beats <= 0) return { state:'Väntar på data' };
+  const mpb = bd.dd/bd.beats;
+  const refs = effRefs[rec.source === 'demo' ? 'demo' : 'pm5'];
+  const ex = expectedMpb(refs, p);
+  if (!ex) return { mpb, state: refs.length ? `Ingen historik kring ${Math.round(p)} W än` : 'Bygger baslinje, jämförelsen startar efter första passet' };
+  return { mpb, pct:(mpb/ex.e - 1)*100, state:`Mot ${ex.n} tidigare minuter kring ${Math.round(p)} W` };
+}
+function gaugeSVG(pct, label){
+  const R = EFF.range, b = effBand(), cx = 150, cy = 150, r = 112;
+  const ang = v => Math.PI + (Math.max(-R, Math.min(R, v)) + R)/(2*R)*Math.PI;
+  const px = (a, rr) => (cx + rr*Math.cos(a)).toFixed(1), py = (a, rr) => (cy + rr*Math.sin(a)).toFixed(1);
+  const arc = (v1, v2, col, op) => `<path d="M${px(ang(v1),r)} ${py(ang(v1),r)} A${r} ${r} 0 0 1 ${px(ang(v2),r)} ${py(ang(v2),r)}" stroke="${col}" stroke-opacity="${op}" stroke-width="20" fill="none"/>`;
+  const z = effZone(pct);
+  const needle = pct == null ? '' : `<line x1="${cx}" y1="${cy}" x2="${px(ang(pct), r-30)}" y2="${py(ang(pct), r-30)}" stroke="var(--text)" stroke-width="4" stroke-linecap="round"/>`;
+  const tick = v => `<line x1="${px(ang(v), r-12)}" y1="${py(ang(v), r-12)}" x2="${px(ang(v), r+12)}" y2="${py(ang(v), r+12)}" stroke="var(--surface)" stroke-width="3"/>`;
+  return `<svg viewBox="0 0 300 206" role="img" aria-label="${esc(label || 'Effektivitetsmätare')}">
+    ${arc(-R, -b, 'var(--power)', 0.85)}${arc(-b, b, 'var(--muted)', 0.35)}${arc(b, R, 'var(--accent)', 0.85)}${tick(-b)}${tick(b)}
+    <text x="${px(ang(-R), r)}" y="${cy + 26}" text-anchor="middle" font-size="13" font-weight="600" fill="var(--muted)">Under</text>
+    <text x="${cx}" y="14" text-anchor="middle" font-size="13" font-weight="600" fill="var(--muted)">I nivå</text>
+    <text x="${px(ang(R), r)}" y="${cy + 26}" text-anchor="middle" font-size="13" font-weight="600" fill="var(--muted)">Över</text>
+    ${needle}<circle cx="${cx}" cy="${cy}" r="9" fill="${pct == null ? 'var(--line)' : 'var(--text)'}"/>
+    <text x="${cx}" y="${cy + 46}" text-anchor="middle" font-size="30" font-weight="700" font-family="Barlow Condensed, Arial Narrow, sans-serif" fill="${z ? ZONE_COLOR[z] : 'var(--muted)'}">${pct == null ? '–' : fmtPct(pct)}</text>
+  </svg>`;
+}
+function renderEffLive(){
+  const r = liveEff(), z = effZone(r.pct);
+  $('#gaugeLive').innerHTML = gaugeSVG(r.pct ?? null, z ? ZONE_TEXT[z] : 'Effektivitetsmätare');
+  $('#v-mpb').textContent = fmtMpb(r.mpb);
+  const zEl = $('#v-effzone'); zEl.textContent = z ? ZONE_TEXT[z] : ''; zEl.style.color = z ? ZONE_COLOR[z] : '';
+  $('#v-effstate').textContent = r.state || '';
+}
+function effSummaryText(m){
+  if (m.mpb == null) return 'Inga minuter med jämn effekt över 50 W och puls efter uppvärmningen, så värdet kunde inte räknas.';
+  const e = m.eff;
+  if (!e || e.index == null) return e && e.refMinutes ? 'För få tidigare minuter vid samma effekt för en jämförelse. Passet ingår nu i baslinjen.' : 'Det här passet blir baslinjen som kommande pass jämförs med.';
+  return `${ZONE_TEXT[effZone(e.index)]}. ${fmtPct(e.index)} mot dina tidigare minuter vid samma effekt, ${e.compared} av ${m.effMin.length} minuter jämförda.`;
+}
+
 function computeSummary(s){
   const sm = s.samples, last = sm[sm.length-1] || {};
   const pmS = s.pm.summary, pmA = s.pm.addSummary;
@@ -557,19 +715,23 @@ function computeSummary(s){
   const e1 = eff(h1), e2 = eff(h2);
   const sp = s.strokes.map(x=>x.p).filter(v=>v>0);
   const strokes = s.strokes.length ? (s.strokes[s.strokes.length-1].n || s.strokes.length) : null;
+  const effMin = effMinutes(sm);
+  const effTot = effMin.reduce((a,x) => ({ dd:a.dd + x.dd, b:a.b + x.beats }), { dd:0, b:0 });
   const buckets = {};
   for (const x of sm) { const k = Math.floor(x.t/60); (buckets[k] ||= []).push(x); }
   const perMin = Object.keys(buckets).map(Number).sort((a,b)=>a-b).map(k => {
     const b = buckets[k];
     const m = arr => { const v = arr.filter(z=>z>0); return v.length ? Math.round(mean(v)) : null; };
     const pc = b.map(z=>z.pace).filter(z=>z>0 && z<600);
-    return { min:k+1, p:m(b.map(z=>z.p)), spm:m(b.map(z=>z.spm)), hr:m(b.map(z=>z.hr||0)), pace: pc.length ? r1(mean(pc)) : null };
+    const bd = beatsAndDist(b);
+    return { min:k+1, p:m(b.map(z=>z.p)), spm:m(b.map(z=>z.spm < 100 ? z.spm : 0)), hr:m(b.map(z=>z.hr||0)), pace: pc.length ? r1(mean(pc)) : null,
+      mpb: bd.beats > 0 && bd.n >= b.length*0.8 && m(b.map(z=>z.p)) >= EFF.minP ? r2(bd.dd/bd.beats) : null };
   });
   return {
     duration, distance,
     avgPace: pmS && pmS.avgPace > 0 ? pmS.avgPace : (distance > 0 ? duration/distance*500 : null),
     avgPower: pmA && pmA.watts > 0 ? pmA.watts : (pw.length ? Math.round(mean(pw)) : null),
-    avgSpm: mean(sm.map(x=>x.spm).filter(v=>v>0)),
+    avgSpm: mean(sm.map(x=>x.spm).filter(v=>v>0 && v<100)),
     avgHr: hrA.length ? mean(hrA) : (pmS && pmS.avgHr) || null,
     maxHr: hrA.length ? Math.max(...hrA) : (pmS && pmS.maxHr) || null,
     recoveryHr: pmS && pmS.recoveryHr || null,
@@ -580,7 +742,8 @@ function computeSummary(s){
     decoupling: e1 && e2 ? (e1-e2)/e1*100 : null,
     cv: sp.length > 10 ? std(sp)/mean(sp)*100 : null,
     best60: bestWindow(sm, 60),
-    perMin, curve: curveStats(s.curves)
+    perMin, curve: curveStats(s.curves),
+    effMin, mpb: effTot.b > 0 ? effTot.dd/effTot.b : null, v: 2
   };
 }
 function insights(m){
@@ -683,7 +846,7 @@ function renderLive(){
   set('v-state', connState==='none' ? 'Ej ansluten' : (WS[live.workoutState] ?? 'Ansluten'));
   set('v-pace', live.pace ? fmtPace(live.pace) : '–');
   set('v-power', live.power ? String(live.power) : '–');
-  set('v-spm', live.spm ? String(live.spm) : '–');
+  set('v-spm', live.spm > 0 && live.spm < 100 ? String(live.spm) : '–');
   const hr = getHr(); set('v-hr', hr ? String(hr) : '–');
   set('v-dist', live.distance != null ? String(Math.round(live.distance)) : '–');
   set('v-avgpace', live.avgPace ? fmtPace(live.avgPace) : '–');
@@ -716,6 +879,14 @@ function summaryHTML(s, ctx){
       <button class="btn" data-act="close">${ctx==='live' ? 'Stäng' : 'Tillbaka'}</button>
     </div>
     <div class="kv">${kv.map(([k,v]) => `<div><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`).join('')}</div>
+  </div>
+  <div class="card">
+    <h3>Meter per pulsslag mot din historik</h3>
+    <div class="effwrap">
+      <div class="effgauge">${gaugeSVG(m.eff ? m.eff.index : null, m.eff && m.eff.index != null ? ZONE_TEXT[effZone(m.eff.index)] : 'Effektivitetsmätare')}</div>
+      <div class="efftext"><div class="k">Arbetsdelen</div><div class="v">${fmtMpb(m.mpb)} <span class="muted" style="font-size:15px;font-family:var(--body)">m/slag</span></div>
+      <p class="muted small" style="margin-top:4px">${esc(effSummaryText(m))}</p></div>
+    </div>
   </div>
   ${ins.length ? `<div class="card"><h3>Vad datan visar</h3>${ins.map(i => `<div class="insight"><div class="t"><span>${i.t}</span><span>${esc(i.v)}</span></div><p>${esc(i.p)}</p></div>`).join('')}</div>` : ''}
   <div class="card">
@@ -757,7 +928,7 @@ function renderSummary(el, s, ctx, onClose){
   el.querySelector('[data-act=md]').onclick = async () => { await syncNote(); const f = await buildPassFile(s); download(f.base + '.md', f.text, 'text/markdown'); };
   el.querySelector('[data-act=csv]').onclick = () => exportCSV(s);
   const del = el.querySelector('[data-act=delete]');
-  if (del) del.onclick = async () => { if (confirm('Radera passet permanent?')) { await DB.del(s.id); toast('Passet är raderat'); onClose(); } };
+  if (del) del.onclick = async () => { if (confirm('Radera passet permanent?')) { await DB.del(s.id); await rebuildRefs(); toast('Passet är raderat'); onClose(); } };
   requestAnimationFrame(() => drawSummaryCharts(el, s));
 }
 function drawSummaryCharts(el, s){
@@ -799,18 +970,18 @@ async function renderHistory(){
   }
   const chrono = all.slice().reverse();
   list.innerHTML = `
-    <div class="card"><h3>Utveckling, snittwatt och puls per pass</h3><canvas class="chart" id="histTrend"></canvas>
-      <div class="legend"><span><i style="background:var(--power)"></i>Snittwatt</span><span><i style="background:var(--hr)"></i>Snittpuls</span></div></div>
+    <div class="card"><h3>Utveckling, snittwatt och meter per pulsslag</h3><canvas class="chart" id="histTrend"></canvas>
+      <div class="legend"><span><i style="background:var(--power)"></i>Snittwatt</span><span><i style="background:var(--accent)"></i>Meter per pulsslag</span></div></div>
     ${all.map(s => { const m = s.summary; return `
       <button class="hist-item" data-id="${esc(s.id)}">
         <div><div class="d">${esc(fmtDate(s.start))}${s.source==='demo' ? '<span class="badge">demo</span>' : ''}</div>
-        <div class="m">${Math.round(m.distance)} m på ${fmtTime(m.duration)}${m.avgHr ? `, puls ${Math.round(m.avgHr)}` : ''}</div></div>
+        <div class="m">${Math.round(m.distance)} m på ${fmtTime(m.duration)}${m.avgHr ? `, puls ${Math.round(m.avgHr)}` : ''}${m.mpb ? `, ${fmtMpb(m.mpb)} m/slag` : ''}${m.eff && m.eff.index != null ? ` (${fmtPct(m.eff.index)})` : ''}</div></div>
         <div class="r">${fmtPace(m.avgPace)}<div class="m">${m.avgPower ?? '–'} W</div></div>
       </button>`; }).join('')}`;
   list.querySelectorAll('.hist-item').forEach(b => b.onclick = () => openHistory(b.dataset.id));
   requestAnimationFrame(() => drawChart($('#histTrend'), [
     { pts: chrono.map((s,i) => [i, s.summary.avgPower || null]), color: cssVar('--power') },
-    { pts: chrono.map((s,i) => [i, s.summary.avgHr || null]), color: cssVar('--hr') }
+    { pts: chrono.map((s,i) => [i, s.summary.mpb || null]), color: cssVar('--accent'), fmt: v => fmtMpb(v) }
   ], { xfmt: v => v === 0 ? 'första' : 'senaste', empty:'Behöver minst två pass' }));
 }
 async function openHistory(id){
@@ -826,6 +997,7 @@ const PASS_PROMPT = `Du är en erfaren tränare inom längdskidåkning och SkiEr
 Analysera passet ärligt och konkret:
 - Vad passet var (tolka typ av pass utifrån struktur, intensitet och min anteckning).
 - Vad datan avslöjar: effektfördelning och fall över tid, pulsdrift, val av takt och arbete per drag, förändringar i kraftkurvan som tecken på teknisk trötthet.
+- Effektivitet: meter per pulsslag och hur den står sig mot mina tidigare minuter vid samma effekt.
 - Hur passet står sig mot historiken: trender, jämförbara pass, framsteg eller varningstecken.
 - Två till tre konkreta, genomförbara råd för kommande pass.
 
@@ -844,11 +1016,12 @@ function aboutLines(){
   return L.length ? ['', '## Om mig', ...L] : [];
 }
 function histTable(list){
-  return mdTable(['Datum','Tid','Meter','Tempo /500 m','Watt','Takt','Snittpuls','Maxpuls','Effektförändring','Pulsdrift','Bästa 60 s (W)','Anteckning'],
+  return mdTable(['Datum','Tid','Meter','Tempo /500 m','Watt','Takt','Snittpuls','Maxpuls','Effektförändring','Pulsdrift','Bästa 60 s (W)','m/slag','Effektivitet','Anteckning'],
     list.map(s => { const m = s.summary; return [
       fmtDate(s.start) + (s.source==='demo' ? ' (demo)' : ''), fmtTime(m.duration), Math.round(m.distance), fmtPace(m.avgPace),
       m.avgPower, r1(m.avgSpm), m.avgHr ? Math.round(m.avgHr) : null, m.maxHr,
       m.fade!=null ? signed(m.fade) : null, m.decoupling!=null ? signed(m.decoupling) : null, m.best60,
+      fmtMpb(m.mpb), m.eff && m.eff.index != null ? fmtPct(m.eff.index) : null,
       s.note ? s.note.slice(0,120) : null ]; }));
 }
 async function buildPassFile(s){
@@ -868,6 +1041,8 @@ async function buildPassFile(s){
       ['Snittwatt', m.avgPower], ['Takt (spm)', r1(m.avgSpm)], ['Snittpuls', m.avgHr ? Math.round(m.avgHr) : null], ['Maxpuls', m.maxHr],
       ['Återhämtningspuls enligt PM5', m.recoveryHr], ['Antal drag', m.strokes], ['Meter per drag', r2(m.dps)],
       ['Arbete per drag (J)', m.avgWork ? Math.round(m.avgWork) : null], ['Kalorier', m.calories], ['Bästa 60 s (W)', m.best60],
+      ['Meter per pulsslag, arbetsdelen', fmtMpb(m.mpb)],
+      ['Effektivitet mot historiken', m.eff && m.eff.index != null ? `${fmtPct(m.eff.index)}, ${ZONE_TEXT[effZone(m.eff.index)].toLowerCase()} (${m.eff.compared} minuter jämförda)` : 'Ingen jämförelse än, för lite historik'],
       ['Hur passet avslutades', s.endReason]
     ]),
     '', '## Härledda nyckeltal',
@@ -876,10 +1051,12 @@ async function buildPassFile(s){
       ['Pulsdrift (decoupling)', m.decoupling!=null ? signed(m.decoupling) : null, 'Minskning av kvoten watt/puls från första till andra halvan. Positivt värde betyder att pulsen steg relativt effekten'],
       ['Effektvariation', m.cv!=null ? `${m.cv.toFixed(1)} %` : null, 'Variationskoefficient för effekt per drag'],
       ['Toppkraft, första och sista tredjedelen', c ? `${c.peakEarly} / ${c.peakLate} lbf` : null, 'Toppen på snittkraftkurvan'],
-      ['Toppens läge i draget, första och sista tredjedelen', c ? `${r2(c.posEarly)} / ${r2(c.posLate)}` : null, '0 är dragets start och 1 dess slut']
+      ['Toppens läge i draget, första och sista tredjedelen', c ? `${r2(c.posEarly)} / ${r2(c.posLate)}` : null, '0 är dragets start och 1 dess slut'],
+      ['Meter per pulsslag', fmtMpb(m.mpb), `Distans delat med antal pulsslag. Räknas bara på minuter efter ${EFF.warmup/60} minuters uppvärmning, med minst ${EFF.minP} W, puls och högst 15 % effektändring mot minuten före (${(m.effMin||[]).length} minuter)`],
+      ['Effektivitet mot historiken', m.eff && m.eff.index != null ? fmtPct(m.eff.index) : null, `Snitt per minut av meter per pulsslag jämfört med medianen för mina tidigare minuter vid samma effekt (±10 %). Inom ±${effBand()} % räknas som i nivå`]
     ]),
     '', '## Per minut',
-    mdTable(['Minut','Watt','Takt (spm)','Puls','Tempo /500 m'], m.perMin.map(x => [x.min, x.p, x.spm, x.hr, fmtPace(x.pace)])),
+    mdTable(['Minut','Watt','Takt (spm)','Puls','Tempo /500 m','m/slag'], m.perMin.map(x => [x.min, x.p, x.spm, x.hr, fmtPace(x.pace), x.mpb != null ? fmtMpb(x.mpb) : null])),
     ...(splits.length ? ['', '## Splittar', mdTable(['Nr','Tid','Meter','Tempo /500 m','Watt','Takt','Puls'],
       splits.map(x => [x.n, fmtTime(x.time), x.dist, fmtPace(x.pace), x.power, x.spm, x.hr]))] : []),
     '', `## Historik, ${hist.length} tidigare pass (nyast först)`,
@@ -930,6 +1107,7 @@ async function importFile(file){
       if (!s.summary) s.summary = computeSummary(s);
       await DB.put(s); n++;
     }
+    await migrateSummaries(); await rebuildRefs();
     toast(`${n} pass importerade`);
   } catch (e) { toast('Importen misslyckades: ' + e.message); }
 }
@@ -1118,6 +1296,7 @@ setInterval(() => {
     while (liveBuf.length > 190) liveBuf.shift();
     if (currentView === 'live') drawLiveChart();
   }
+  if (currentView === 'live') renderEffLive();
   if (rec && !finTimer && Date.now() - rec.lastChange > 120000) finalize('ingen aktivitet på två minuter');
 }, 1000);
 window.addEventListener('beforeunload', e => { if (rec) { e.preventDefault(); e.returnValue = ''; } });
@@ -1127,6 +1306,10 @@ window.addEventListener('resize', () => { if (currentView === 'live') { drawLive
   if (!navigator.bluetooth) $('#btWarn').classList.remove('hidden');
   await DB.open();
   await recoverDrafts();
+  await migrateSummaries();
+  await rebuildRefs();
+  $('#setEffBand').value = settings.effBand;
+  $('#setEffBand').onchange = e => { const v = Number(String(e.target.value).replace(',', '.')); settings.effBand = v > 0 ? v : DEFAULTS.effBand; e.target.value = settings.effBand; saveSettings(); };
   $('#setRate').value = String(settings.rate); $('#setMaxHr').value = settings.maxHr; $('#setAbout').value = settings.about || '';
   $('#setAbout').onchange = e => { settings.about = e.target.value.trim(); saveSettings(); };
   $('#setRate').onchange = e => { settings.rate = Number(e.target.value); saveSettings(); };
@@ -1142,9 +1325,9 @@ window.addEventListener('resize', () => { if (currentView === 'live') { drawLive
   $('#btnExportHist').onclick = exportHistoryMd;
   $('#btnImport').onclick = () => $('#fileImport').click();
   $('#fileImport').onchange = e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = ''; };
-  $('#btnWipe').onclick = async () => { if (confirm('Radera alla sparade pass permanent?')) { await DB.clear(); toast('Alla pass är raderade'); } };
+  $('#btnWipe').onclick = async () => { if (confirm('Radera alla sparade pass permanent?')) { await DB.clear(); await rebuildRefs(); toast('Alla pass är raderade'); } };
   document.querySelectorAll('nav.bottom button').forEach(b => b.onclick = () => show(b.dataset.view));
-  setConn('none'); show('live');
+  setConn('none'); show('live'); renderEffLive();
 })();
 </script>
 </body>
