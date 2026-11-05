@@ -194,6 +194,17 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
   .zseg{padding:4px 2px}
   #zoneLive p, #trackInfo p.muted{font-size:12.5px}
 }
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.nerdhead{display:flex;justify-content:space-between;align-items:flex-end;gap:8px 16px;flex-wrap:wrap}
+.nerdsel{flex:0 1 340px;min-width:220px}
+.nerdsel label{margin-top:0}
+.nerdgrid{display:grid;gap:12px;margin-bottom:12px}
+.nerdgrid > .card{margin:0}
+canvas.chart.sq{height:250px}
+.ndesc{color:var(--muted);font-size:13.5px;margin:8px 0 0;line-height:1.45}
+.nlead{margin:2px 0 8px}
+details.card summary{cursor:pointer;list-style:revert}
+@media (min-width:1100px){ .nerdgrid{grid-template-columns:repeat(2,minmax(0,1fr))} .nerdgrid .wide{grid-column:1/-1} }
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));background:var(--text);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s;z-index:20;pointer-events:none;max-width:90vw}
 .toast.show{opacity:1}
 </style>
@@ -304,18 +315,23 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
     <div id="histList"></div>
   </section>
 
-  <!-- LOGG -->
-  <section id="view-log" class="hidden">
-    <div class="card">
-      <h2>Bluetooth-logg</h2>
-      <p class="muted small">Rådata från PM5 i hex, senaste 400 raderna. Kopiera och skicka hit om något värde ser konstigt ut.</p>
+  <!-- NÖRD -->
+  <section id="view-nerd" class="hidden">
+    <div class="card nerdhead">
+      <div><h2>Nörd</h2><p class="muted small">Draget, effekten, pulsen och belastningen på djupet.</p></div>
+      <div class="nerdsel"><label for="nerdPass">Pass</label><select id="nerdPass"></select></div>
+    </div>
+    <div id="nerdBody" class="nerdgrid"></div>
+    <details class="card" id="logCard">
+      <summary><b>Bluetooth-logg</b> <span class="muted small">rådata från PM5</span></summary>
+      <p class="muted small" style="margin-top:8px">Rådata från PM5 i hex, senaste 400 raderna. Kopiera och skicka hit om något värde ser konstigt ut.</p>
       <div class="btnrow">
         <button class="btn" id="btnLogPause">Pausa</button>
         <button class="btn" id="btnLogClear">Rensa</button>
         <button class="btn" id="btnLogCopy">Kopiera</button>
       </div>
       <div id="log"></div>
-    </div>
+    </details>
   </section>
 
   <!-- INSTÄLLNINGAR -->
@@ -333,6 +349,18 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
       <p class="muted small">Mätaren jämför meter per pulsslag med dina tidigare minuter vid samma effekt. Dagsform flyttar pulsen några procent, så en för snäv gräns reagerar mest på sömn och koffein.</p>
       <label for="setEffBand">Gräns för "i nivå" (± procent)</label>
       <input id="setEffBand" type="number" inputmode="decimal" min="1" max="10" step="0.5">
+    </div>
+    <div class="card">
+      <h2>Nörd</h2>
+      <p class="muted small">Används av Nörd-fliken. Lämna tomt om du inte vet, då visas de mått som går att räkna ändå.</p>
+      <div class="row2">
+        <div><label for="setRestHr">Vilopuls</label><input id="setRestHr" type="number" inputmode="numeric" min="30" max="100" placeholder="t.ex. 48"></div>
+        <div><label for="setSex">Kön, för TRIMP-formeln</label><select id="setSex"><option value="m">Man</option><option value="f">Kvinna</option></select></div>
+        <div><label for="setCp">Kritisk effekt, CP (W)</label><input id="setCp" type="number" inputmode="numeric" min="50" max="600"></div>
+        <div><label for="setWp">W′ (kJ)</label><input id="setWp" type="number" inputmode="decimal" min="1" max="60" step="0.1"></div>
+        <div><label for="setRefW">Referenseffekt, puls (W)</label><input id="setRefW" type="number" inputmode="numeric" placeholder="automatisk"></div>
+        <div><label for="setLoadSrc">Belastning i modellen</label><select id="setLoadSrc"><option value="trimp">TRIMP, från pulsen</option><option value="srpe">sRPE, från din RPE</option></select></div>
+      </div>
     </div>
     <div class="card">
       <h2>PM5</h2>
@@ -360,9 +388,9 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
 </main>
 
 <nav class="bottom">
-  <button data-view="live" class="active">Live</button>
+  <button data-view="live" class="active">Bas</button>
+  <button data-view="nerd">Nörd</button>
   <button data-view="history">Historik</button>
-  <button data-view="log">Logg</button>
   <button data-view="settings">Inställningar</button>
 </nav>
 <div id="toast" class="toast"></div>
@@ -455,7 +483,8 @@ function smooth(a, k){
 }
 
 /* ============================================================ Inställningar */
-const DEFAULTS = { rate:2, maxHr:'', about:'', effBand:3, target:{ mode:'auto', dist:5000, time:30 }, course:null };
+const DEFAULTS = { rate:2, maxHr:'', about:'', effBand:3, target:{ mode:'auto', dist:5000, time:30 }, course:null,
+  restHr:'', sex:'m', loadSrc:'trimp', cp:'', wprime:'', refW:'' };
 let settings = (() => { try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('skierg.settings') || '{}') }; } catch(e) { return { ...DEFAULTS }; } })();
 // Rensa bort API-nyckel från tidigare version
 if ('apiKey' in settings || 'model' in settings) { delete settings.apiKey; delete settings.model; try { localStorage.setItem('skierg.settings', JSON.stringify(settings)); } catch(e) {} }
@@ -503,7 +532,7 @@ function setConn(state){
 
 /* ============================================================ Rå logg */
 const rawLog = []; let logPaused = false, logTimer = null;
-function pushLog(line){ rawLog.push(line); if (rawLog.length > 400) rawLog.shift(); if (currentView==='log' && !logTimer) logTimer = setTimeout(()=>{ logTimer=null; renderLog(); }, 300); }
+function pushLog(line){ rawLog.push(line); if (rawLog.length > 400) rawLog.shift(); if (currentView==='nerd' && $('#logCard').open && !logTimer) logTimer = setTimeout(()=>{ logTimer=null; renderLog(); }, 300); }
 function logRaw(name, dv){
   if (logPaused) return;
   const hex = [...new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength)].map(b=>b.toString(16).padStart(2,'0')).join(' ');
@@ -556,7 +585,7 @@ function onForce(d){
 function finishCurve(arr){
   if (arr.length < 4) return;
   live.curve = arr.slice();
-  if (rec) rec.curves.push(resample(arr, 24));
+  if (rec) { rec.curves.push(resample(arr, 24)); (rec.curveT ||= []).push(+(live.elapsed || 0).toFixed(1)); (rec.curveDt ||= []).push(live.driveTime || null); }
   if (currentView === 'live') drawForce();
 }
 
@@ -577,7 +606,7 @@ function startSession(){
     machine: machineName(live.machine), workoutType: live.workoutType,
     samples:[], strokes:[], splits:[], curves:[], pm:{}, note:'',
     lastElapsed: live.elapsed, lastChange: Date.now(), lastSampleT: -1 };
-  rec.target = activeTarget(); lastCp = null; ghost = null; loadGhost();
+  rec.target = activeTarget(); lastCp = null; ghost = null; loadGhost(); nerdSelWanted = null;
   $('#summaryLive').innerHTML = '';
   logMsg('Pass startat'); toast('Passet har startat, spelar in');
   updateRecUI();
@@ -625,6 +654,7 @@ async function finalize(reason){
   logMsg('Pass sparat (' + reason + ')');
   await rebuildRefs();
   showLiveSummary(s);
+  nerdSelWanted = null; if (currentView === 'nerd') renderNerd(true);
 }
 function updateRecUI(){
   $('#recBadge').classList.toggle('hidden', !rec);
@@ -1336,6 +1366,510 @@ function histExtrasMd(all){
   return out;
 }
 
+/* ============================================================ Nörd: beräkningar */
+const sumA = a => a.reduce((x, y) => x + y, 0);
+const fmt2 = v => v == null || !isFinite(v) ? '–' : v.toFixed(2).replace('.', ',');
+function nMedian(a){ const b = a.filter(v => v != null && isFinite(v)).sort((x, y) => x - y); if (!b.length) return null; const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m-1] + b[m])/2; }
+function lowerBound(a, x){ let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] < x) lo = m + 1; else hi = m; } return lo; }
+function nLinreg(xs, ys){
+  const n = xs.length; if (n < 3) return null;
+  const mx = mean(xs), my = mean(ys); let sxx = 0, sxy = 0, syy = 0;
+  for (let i=0; i<n; i++) { const dx = xs[i]-mx, dy = ys[i]-my; sxx += dx*dx; sxy += dx*dy; syy += dy*dy; }
+  if (!(sxx > 0)) return null;
+  const b = sxy/sxx, a = my - b*mx, sse = Math.max(0, syy - b*sxy), s2 = n > 2 ? sse/(n-2) : 0;
+  return { a, b, n, r2: syy > 0 ? 1 - sse/syy : 1, seb: Math.sqrt(s2/sxx) };
+}
+// Giltiga drag med dragtid och återhämtningstid; cykeltid = drag + återhämtning
+function strokeRows(strokes){
+  return strokes.filter(x => x.work > 0 && x.dt > 0 && x.rt > 0)
+    .map(x => ({ t:x.t, work:x.work, dt:x.dt, cyc:x.dt + x.rt }))
+    .filter(x => x.cyc >= 0.6 && x.cyc <= 4);
+}
+function curvesTimed(s){
+  const C = s.curves || [], N = C.length; if (!N) return [];
+  const sm = s.samples || [], t0 = sm.length ? sm[0].t : 0, t1 = sm.length ? sm[sm.length-1].t : N;
+  const dtMed = nMedian(strokeRows(s.strokes || []).map(r => r.dt));
+  const hasT = s.curveT && s.curveT.length === N;
+  return C.map((c, i) => ({ c, t: hasT ? s.curveT[i] : t0 + (t1 - t0)*i/Math.max(1, N-1), dt: (s.curveDt && s.curveDt[i]) || dtMed }));
+}
+function curveInfo(c, dt){
+  if (!c || c.length < 4) return null;
+  const pk = Math.max(...c); if (!(pk > 0)) return null;
+  const pos = c.indexOf(pk)/(c.length - 1);
+  return { pk, pos, fill: mean(c)/pk, rfd: dt > 0 && pos > 0.02 ? pk/(pos*dt) : null };
+}
+function curveSummary(items){
+  const inf = items.map(x => curveInfo(x.c, x.dt)).filter(Boolean); if (!inf.length) return null;
+  const rf = inf.map(x => x.rfd).filter(v => v > 0);
+  return { n:inf.length, pk:mean(inf.map(x => x.pk)), fill:mean(inf.map(x => x.fill)), pos:mean(inf.map(x => x.pos)), rfd: rf.length ? mean(rf) : null };
+}
+// Medelkurva och standardavvikelse punkt för punkt. Formvariationen är medel-SD relativt toppen.
+function curveBand(cs){
+  if (!cs.length) return null;
+  const n = cs[0].length, m = [], sd = [];
+  for (let i=0; i<n; i++) { const v = cs.map(c => c[i] || 0); m.push(mean(v)); sd.push(cs.length > 1 ? std(v) : 0); }
+  const pk = Math.max(...m);
+  return { m, sd, cv: pk > 0 && cs.length > 1 ? mean(sd)/pk*100 : null };
+}
+function curveByMinute(items){
+  const b = {};
+  for (const x of items) { const inf = curveInfo(x.c, x.dt); if (inf) (b[Math.floor(x.t/60)] ||= []).push(inf); }
+  return Object.keys(b).map(Number).sort((x, y) => x - y).filter(k => b[k].length >= 3)
+    .map(k => ({ min:k + 1, fill:mean(b[k].map(x => x.fill)), pos:mean(b[k].map(x => x.pos)) }));
+}
+// Effekt = arbete per drag × dragfrekvens, så (1 + takt)(1 + arbete) = 1 + effekt exakt
+function decompose(A, B){
+  if (A.length < 5 || B.length < 5) return null;
+  const wA = mean(A.map(x => x.work)), wB = mean(B.map(x => x.work));
+  const fA = A.length/sumA(A.map(x => x.cyc)), fB = B.length/sumA(B.map(x => x.cyc));
+  return { work:(wB/wA - 1)*100, rate:(fB/fA - 1)*100, power:(wB*fB/(wA*fA) - 1)*100, wA, wB, spmA:fA*60, spmB:fB*60 };
+}
+function poincare(rows){
+  const pts = [], d = [];
+  for (let i=1; i<rows.length; i++) {
+    if (rows[i].t - rows[i-1].t > 5) continue;
+    const a = rows[i-1].cyc*1000, b = rows[i].cyc*1000; pts.push([a, b, i/rows.length]); d.push(b - a);
+  }
+  if (pts.length < 20) return null;
+  const c = rows.map(r => r.cyc*1000), vd = std(d)**2, vc = std(c)**2;
+  return { pts, sd1:Math.sqrt(vd/2), sd2:Math.sqrt(Math.max(0, 2*vc - vd/2)), cv:std(c)/mean(c)*100, mean:mean(c) };
+}
+function npOf(sm){
+  if (sm.length < 60) return null;
+  let j = 0, acc = 0; const r = [];
+  for (let i=0; i<sm.length; i++) {
+    acc += sm[i].p;
+    while (sm[i].t - sm[j].t >= 30) { acc -= sm[j].p; j++; }
+    if (sm[i].t - sm[0].t >= 30) r.push(acc/(i - j + 1));
+  }
+  return r.length ? Math.pow(mean(r.map(v => v**4)), 0.25) : null;
+}
+function powerStats(sm){
+  const np = npOf(sm), avg = sm.length ? mean(sm.map(x => x.p)) : null, cp = Number(settings.cp) || 0;
+  const dur = sm.length ? sm[sm.length-1].t - sm[0].t : 0, IF = np && cp ? np/cp : null;
+  return { np, avg, vi: np && avg ? np/avg : null, IF, load: IF ? dur*np*IF/(cp*3600)*100 : null };
+}
+// Skibas differentialmodell: töms med (P − CP)·dt över CP, fylls med (CP − P)·dt·(W′0 − W′)/W′0 under
+function wbalSeries(sm){
+  const cp = Number(settings.cp) || 0, w0 = (Number(settings.wprime) || 0)*1000;
+  if (!cp || !w0 || sm.length < 2) return null;
+  let w = w0, min = w0; const pts = [[sm[0].t, w0]];
+  for (let i=1; i<sm.length; i++) {
+    const dt = Math.min(5, sm[i].t - sm[i-1].t); if (dt <= 0) continue;
+    const p = sm[i].p;
+    if (p > cp) w -= (p - cp)*dt; else w += (cp - p)*dt*(w0 - w)/w0;
+    min = Math.min(min, w); pts.push([sm[i].t, w]);
+  }
+  return { pts, now:w, min, w0 };
+}
+// Arbete = W′ + CP · tid, anpassat på bästa insatser mellan 2 och 20 minuter
+function cpEstimate(mmpRec){
+  const D = [120,300,600,1200].filter(d => mmpRec[d]);
+  if (D.length < 3) return null;
+  const r = nLinreg(D, D.map(d => mmpRec[d].v*d));
+  if (!r || r.b <= 0 || r.a <= 0) return { bad:true, n:D.length };
+  return { cp:Math.round(r.b), wp:r.a/1000, n:D.length, d:D };
+}
+// Stabila minuter efter uppvärmning, samma urval som effektivitetsmätaren
+function hrMinutes(sm){
+  const buckets = {};
+  for (const x of sm) (buckets[Math.floor(x.t/60)] ||= []).push(x);
+  const out = []; let prevP = null;
+  for (const k of Object.keys(buckets).map(Number).sort((a, b) => a - b)) {
+    const b = buckets[k], pw = b.map(x => x.p).filter(v => v > 0), p = pw.length ? mean(pw) : 0;
+    const steady = prevP > 0 && Math.abs(p - prevP)/prevP <= 0.15; prevP = p;
+    const hs = b.map(x => x.hr).filter(v => v > 0);
+    if (k*60 < EFF.warmup || p < EFF.minP || b.length < 40 || !steady || hs.length/b.length < 0.9) continue;
+    out.push({ min:k + 1, p, hr:mean(hs) });
+  }
+  return out;
+}
+// Poolad modell (fixa effekter): lutningen skattas inom passen, nivån per pass. Ger puls vid referenseffekt.
+function hrModel(sessions){
+  let sxy = 0, sxx = 0; const per = [];
+  for (const s of sessions) {
+    const mins = hrMinutes(s.samples || []); if (mins.length < 4) continue;
+    const mp = mean(mins.map(x => x.p)), mh = mean(mins.map(x => x.hr));
+    for (const x of mins) { sxy += (x.p - mp)*(x.hr - mh); sxx += (x.p - mp)**2; }
+    per.push({ s, mins, mp, mh });
+  }
+  if (!per.length) return { rows:[], why:'För få stabila minuter med puls än.' };
+  const b = sxx > 0 ? sxy/sxx : null;
+  let rss = 0, df = -1;
+  for (const o of per) { for (const x of o.mins) { const e = (x.hr - o.mh) - b*(x.p - o.mp); rss += e*e; } df += o.mins.length - 1; }
+  const s2 = df > 0 ? rss/df : 0, seb = sxx > 0 ? Math.sqrt(s2/sxx) : Infinity;
+  const ref = Number(settings.refW) || Math.round(nMedian(per.map(o => o.mp))/5)*5;
+  if (!(b > 0) || seb > b/2) return { rows:[], ref, b, seb, why:'För lite effektvariation inom passen för att skatta lutningen säkert än.' };
+  const rows = per.map(o => { const est = o.mh + b*(ref - o.mp), se = Math.sqrt(s2/o.mins.length + (ref - o.mp)**2*seb*seb); return { s:o.s, est, lo:est - 1.96*se, hi:est + 1.96*se, n:o.mins.length, mp:o.mp }; });
+  return { b, seb, ref, rows };
+}
+function sampleIndex(sm){
+  const T = sm.map(x => x.t), ps = [0], hs = [0], hn = [0];
+  for (const x of sm) { ps.push(ps[ps.length-1] + (x.p || 0)); hs.push(hs[hs.length-1] + (x.hr > 0 ? x.hr : 0)); hn.push(hn[hn.length-1] + (x.hr > 0 ? 1 : 0)); }
+  const wP = (a, b) => { const i = lowerBound(T, a), j = lowerBound(T, b); return j > i ? (ps[j] - ps[i])/(j - i) : null; };
+  const wH = (a, b) => { const i = lowerBound(T, a), j = lowerBound(T, b), n = hn[j] - hn[i]; return n > 0 ? (hs[j] - hs[i])/n : null; };
+  return { T, wP, wH };
+}
+// Pulskinetik: HR(t) = HR0 + Δ(1 − e^(−t/τ)) efter varje tydligt effektsteg, τ via rutnätssökning
+function hrSteps(sm){
+  if (sm.length < 120) return [];
+  const { T, wP, wH } = sampleIndex(sm), out = [];
+  let i = 0;
+  while (i < sm.length) {
+    const t = T[i], pre = wP(t - 30, t), post = wP(t, t + 90);
+    if (pre != null && post != null && t - T[0] >= 30 && post - pre >= 40 && post >= 60) {
+      // Platån efter steget mäts 60–150 s fram, steget placeras där 3-s medel passerar halvvägs
+      const hi = wP(t + 60, t + 150); let t0 = null;
+      if (hi != null && hi - pre >= 40) for (let k = i; k < sm.length && T[k] <= t + 90; k++) { const m3 = wP(T[k], T[k] + 3); if (m3 != null && m3 >= pre + 0.5*(hi - pre)) { t0 = T[k]; break; } }
+      const h0 = t0 != null ? wH(t0 - 15, t0) : null, seg = t0 != null ? sm.filter(x => x.t >= t0 && x.t <= t0 + 150 && x.hr > 0) : [];
+      if (h0 && seg.length >= 60) {
+        let best = null;
+        for (let tau = 5; tau <= 150; tau++) {
+          let sgg = 0, sgy = 0;
+          for (const x of seg) { const g = 1 - Math.exp(-(x.t - t0)/tau); sgg += g*g; sgy += g*(x.hr - h0); }
+          const D = sgy/sgg; let sse = 0;
+          for (const x of seg) { const g = 1 - Math.exp(-(x.t - t0)/tau); sse += (x.hr - h0 - D*g)**2; }
+          if (!best || sse < best.sse) best = { tau, D, sse };
+        }
+        if (best && best.D >= 8 && best.tau < 150) out.push({ t:t0, tau:best.tau, dHr:best.D, dP:post - pre });
+      }
+      i = lowerBound(T, (t0 ?? t) + 120); continue;
+    }
+    i += 3;
+  }
+  return out;
+}
+// Pulsåterhämtning i vilor: effekten faller till under hälften
+function hrRecov(sm){
+  if (sm.length < 90) return [];
+  const { T, wP, wH } = sampleIndex(sm), out = [];
+  let i = 0;
+  while (i < sm.length) {
+    const t = T[i], pre = wP(t - 60, t), post = wP(t, t + 30);
+    if (pre != null && post != null && pre >= 80 && post <= 0.5*pre) {
+      let t0 = t;
+      for (let k = i; k < sm.length && T[k] <= t + 30; k++) { const m3 = wP(T[k], T[k] + 3); if (m3 != null && m3 <= 0.5*pre) { t0 = T[k]; break; } }
+      const h0 = wH(t0 - 5, t0), h30 = wH(t0 + 27, t0 + 33), h60 = wH(t0 + 57, t0 + 63);
+      if (h0 && h30) out.push({ t:t0, h0, d30:h0 - h30, d60:h60 ? h0 - h60 : null });
+      i = lowerBound(T, t0 + 90); continue;
+    }
+    i += 3;
+  }
+  return out;
+}
+// Banisters TRIMP minut för minut: tid × x × k·e^(c·x), x = andel av pulsreserven
+function trimpOf(s){
+  const mx = maxHr(), rh = Number(settings.restHr) || 0;
+  if (!mx || !rh || mx <= rh) return null;
+  const male = settings.sex !== 'f', k = male ? 0.64 : 0.86, c = male ? 1.92 : 1.67, sm = s.samples || [];
+  let tr = 0, cov = 0;
+  for (let i=1; i<sm.length; i++) {
+    const dt = sm[i].t - sm[i-1].t; if (dt <= 0 || dt > 5 || !(sm[i].hr > 0)) continue;
+    const x = Math.max(0, Math.min(1, (sm[i].hr - rh)/(mx - rh)));
+    tr += dt/60*x*k*Math.exp(c*x); cov += dt;
+  }
+  return cov > 60 ? tr : null;
+}
+function sessionLoad(s){ return settings.loadSrc === 'srpe' ? (s.rpe && s.summary ? s.rpe*s.summary.duration/60 : null) : trimpOf(s); }
+const localDay = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+// Kondition (CTL, 42 dygn) och trötthet (ATL, 7 dygn) som exponentiella medel; form (TSB) = gårdagens CTL − ATL
+function pmcSeries(sessions){
+  const loads = new Map(); let missing = 0, used = 0;
+  for (const s of sessions) { const L = sessionLoad(s); if (L == null) { missing++; continue; } used++; const k = localDay(new Date(s.start)); loads.set(k, (loads.get(k) || 0) + L); }
+  if (!loads.size) return { days:[], missing, used };
+  const d = new Date(Math.min(...sessions.map(s => +new Date(s.start)))); d.setHours(12, 0, 0, 0);
+  const end = new Date(); end.setHours(12, 0, 0, 0);
+  let ctl = 0, atl = 0; const days = [];
+  for (; d <= end; d.setDate(d.getDate() + 1)) {
+    const L = loads.get(localDay(d)) || 0, tsb = ctl - atl;
+    ctl += (L - ctl)/42; atl += (L - atl)/7;
+    days.push({ k:localDay(d), date:new Date(d), L, ctl, atl, tsb });
+  }
+  return { days, missing, used };
+}
+// Fosters monotoni = dygnsbelastningens medel / standardavvikelse per vecka; strain = veckobelastning × monotoni
+function monotonyRows(days){
+  const map = new Map();
+  for (const d of days) { const [y, w] = isoWeek(d.date), k = `${y}-${pad(w)}`; if (!map.has(k)) map.set(k, { k, w, L:[] }); map.get(k).L.push(d.L); }
+  return [...map.values()].map(o => {
+    const tot = sumA(o.L), m = tot/o.L.length, sd = Math.sqrt(sumA(o.L.map(v => (v - m)**2))/o.L.length);
+    return { k:o.k, w:o.w, tot, days:o.L.length, mono: sd > 0 ? m/sd : null, strain: sd > 0 ? tot*m/sd : null };
+  }).sort((a, b) => b.k.localeCompare(a.k)).slice(0, 6);
+}
+function nerdCalc(s, all){
+  const isLive = s === rec, sm = s.samples || [], rows = strokeRows(s.strokes || []), items = curvesTimed(s), n = { isLive, s };
+  if (items.length) {
+    if (isLive) { const last = items.slice(-20); n.curveSum = curveSummary(last); n.lines = last.map(x => x.c); n.band = curveBand(n.lines); n.formCv = n.band && n.band.cv; }
+    else {
+      n.curveSum = curveSummary(items);
+      const third = Math.max(1, Math.floor(items.length/3));
+      n.bandEarly = curveBand(items.slice(0, third).map(x => x.c)); n.bandLate = curveBand(items.slice(-third).map(x => x.c));
+      n.formCv = n.bandLate && n.bandLate.cv;
+    }
+    n.byMin = curveByMinute(items);
+  }
+  const lastT = rows.length ? rows[rows.length-1].t : 0;
+  if (isLive) { n.dec = decompose(rows.filter(r => r.t > 60), rows.filter(r => r.t >= lastT - 60)); n.decLabel = 'Senaste minuten mot passets snitt'; }
+  else {
+    const W = rows.filter(r => r.t >= EFF.warmup), mid = W.length ? (W[0].t + W[W.length-1].t)/2 : 0;
+    n.dec = decompose(W.filter(r => r.t <= mid), W.filter(r => r.t > mid)); n.decLabel = 'Andra halvan mot första, efter uppvärmningen';
+  }
+  n.rows = rows; n.poinc = poincare(rows);
+  n.pw = powerStats(sm); n.wbal = wbalSeries(sm);
+  n.mins = hrMinutes(sm); n.reg = n.mins.length >= 4 ? nLinreg(n.mins.map(x => x.p), n.mins.map(x => x.hr)) : null;
+  n.steps = hrSteps(sm); n.tau = nMedian(n.steps.map(x => x.tau)); n.recov = hrRecov(sm);
+  n.trimp = trimpOf(s);
+  const pool = all.filter(x => x.summary && !x.draft && x.id !== s.id && sameSrc(x, s)); pool.push(s);
+  pool.sort((a, b) => a.start.localeCompare(b.start));
+  n.model = hrModel(pool); n.modelRow = (n.model.rows || []).find(r => r.s === s) || null;
+  return n;
+}
+
+/* ============================================================ Nörd: diagram */
+function setupCanvas(canvas){
+  if (!canvas) return null;
+  const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+  if (!W || !H) return null;
+  canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
+  const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  ctx.font = '12px Barlow, system-ui, sans-serif';
+  return { ctx, W, H };
+}
+function hexRgb(h){ h = (h || '').trim().replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const v = parseInt(h, 16); return isNaN(v) ? [128,128,128] : [v >> 16 & 255, v >> 8 & 255, v & 255]; }
+function mixColor(a, b, t){ const A = hexRgb(a), B = hexRgb(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v)*Math.max(0, Math.min(1, t)))).join(',')})`; }
+function drawCurves(canvas, o){
+  const r = setupCanvas(canvas); if (!r) return;
+  const { ctx, W, H } = r, padL = 38, padR = 10, padT = 8, padB = 18, pw = W - padL - padR, ph = H - padT - padB, muted = cssVar('--muted');
+  const lines = o.lines || [], bands = (o.bands || []).filter(b => b && b.m);
+  let ymax = 0;
+  lines.forEach(c => c.forEach(v => { if (v > ymax) ymax = v; }));
+  bands.forEach(b => b.m.forEach((v, i) => { if (v + b.sd[i] > ymax) ymax = v + b.sd[i]; }));
+  ctx.strokeStyle = cssVar('--line'); ctx.lineWidth = 1;
+  for (let i=0; i<=3; i++) { const y = Math.round(padT + ph*i/3) + .5; ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke(); }
+  if (!(ymax > 0)) { ctx.fillStyle = muted; ctx.textAlign = 'center'; ctx.fillText('Inga kraftkurvor än', W/2, padT + ph/2); ctx.textAlign = 'left'; return; }
+  ymax *= 1.08;
+  const X = (i, n) => padL + i/(n - 1)*pw, Y = v => padT + ph*(1 - Math.max(0, v)/ymax);
+  const path = (arr, f) => { ctx.beginPath(); arr.forEach((v, i) => i ? ctx.lineTo(X(i, arr.length), Y(f ? f(v, i) : v)) : ctx.moveTo(X(i, arr.length), Y(f ? f(v, i) : v))); };
+  ctx.strokeStyle = muted; ctx.lineWidth = 1; ctx.globalAlpha = 0.3;
+  lines.forEach(c => { path(c); ctx.stroke(); });
+  ctx.globalAlpha = 1;
+  bands.forEach(b => {
+    const n = b.m.length;
+    ctx.fillStyle = b.color; ctx.globalAlpha = 0.2; ctx.beginPath();
+    b.m.forEach((v, i) => { const y = Y(v + b.sd[i]); i ? ctx.lineTo(X(i, n), y) : ctx.moveTo(X(i, n), y); });
+    for (let i=n-1; i>=0; i--) ctx.lineTo(X(i, n), Y(b.m[i] - b.sd[i]));
+    ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = b.color; ctx.lineWidth = 2.5; path(b.m); ctx.stroke();
+  });
+  ctx.fillStyle = muted; ctx.textAlign = 'right'; ctx.fillText(String(Math.round(ymax)), padL - 4, padT + 10); ctx.fillText('0', padL - 4, padT + ph);
+  ctx.textAlign = 'left'; ctx.fillText('lbf', padL + 4, padT + 10);
+  ctx.textAlign = 'left'; ctx.fillText('dragets start', padL, H - 3); ctx.textAlign = 'right'; ctx.fillText('slut', W - padR, H - 3); ctx.textAlign = 'left';
+}
+function drawScatter(canvas, pts, o = {}){
+  const r = setupCanvas(canvas); if (!r) return;
+  const { ctx, W, H } = r, padL = 44, padR = 12, padT = 10, padB = 32, pw = W - padL - padR, ph = H - padT - padB, muted = cssVar('--muted');
+  ctx.strokeStyle = cssVar('--line'); ctx.lineWidth = 1;
+  for (let i=0; i<=3; i++) { const y = Math.round(padT + ph*i/3) + .5; ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke(); }
+  if (!pts.length) { ctx.fillStyle = muted; ctx.textAlign = 'center'; ctx.fillText(o.empty || 'Ingen data än', W/2, padT + ph/2); ctx.textAlign = 'left'; return; }
+  let x0 = Math.min(...pts.map(p => p.x)), x1 = Math.max(...pts.map(p => p.x)), y0 = Math.min(...pts.map(p => p.y)), y1 = Math.max(...pts.map(p => p.y));
+  if (o.square) { const lo = Math.min(x0, y0), hi = Math.max(x1, y1); x0 = y0 = lo; x1 = y1 = hi; }
+  const ex = (x1 - x0) || 1, ey = (y1 - y0) || 1; x0 -= ex*.06; x1 += ex*.06; y0 -= ey*.06; y1 += ey*.06;
+  const X = x => padL + (x - x0)/(x1 - x0)*pw, Y = y => padT + ph*(1 - (y - y0)/(y1 - y0));
+  ctx.save(); ctx.beginPath(); ctx.rect(padL, padT, pw, ph); ctx.clip();
+  if (o.identity) { ctx.strokeStyle = muted; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(X(x0), Y(x0)); ctx.lineTo(X(x1), Y(x1)); ctx.stroke(); ctx.setLineDash([]); }
+  const ca = cssVar('--pace'), cb = cssVar('--power');
+  ctx.globalAlpha = o.alpha || 0.65;
+  for (const p of pts) { ctx.fillStyle = mixColor(ca, cb, p.c || 0); ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), o.r || 2.4, 0, Math.PI*2); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  if (o.line) { ctx.strokeStyle = cssVar('--text'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(x0), Y(o.line.a + o.line.b*x0)); ctx.lineTo(X(x1), Y(o.line.a + o.line.b*x1)); ctx.stroke(); }
+  ctx.restore();
+  const fx = o.fx || (v => String(Math.round(v))), fy = o.fy || (v => String(Math.round(v)));
+  ctx.fillStyle = muted; ctx.textAlign = 'right'; ctx.fillText(fy(y1), padL - 5, padT + 10); ctx.fillText(fy(y0), padL - 5, padT + ph);
+  ctx.textAlign = 'left'; ctx.fillText(fx(x0), padL, H - 17); ctx.textAlign = 'right'; ctx.fillText(fx(x1), W - padR, H - 17);
+  ctx.textAlign = 'center'; ctx.fillText(o.xlab || '', padL + pw/2, H - 3);
+  if (o.ylab) { ctx.textAlign = 'left'; ctx.fillText(o.ylab, padL + 4, padT + 10); }
+  ctx.textAlign = 'left';
+}
+
+/* ============================================================ Nörd: vyn */
+let nerdBusy = false, nerdT = 0, nerdSelWanted = null;
+const nTile = (k, v, sub) => `<div><div class="k">${k}</div><div class="v">${esc(v)}</div>${sub ? `<div class="muted small">${esc(sub)}</div>` : ''}</div>`;
+function fillNerdSelect(all){
+  const el = $('#nerdPass');
+  const opts = (rec ? [['live', 'Pågående pass (live)']] : []).concat(all.slice().sort((a, b) => b.start.localeCompare(a.start)).map(x => [x.id, fmtDate(x.start) + (x.source === 'demo' ? ' (demo)' : '')]));
+  setHTML(el, opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join(''));
+  const vals = opts.map(o => o[0]), want = nerdSelWanted && vals.includes(nerdSelWanted) ? nerdSelWanted : (rec ? 'live' : vals[0]);
+  if (want) el.value = want;
+}
+function strokeCardHTML(n){
+  const c = n.curveSum;
+  if (!c) return '<div class="card"><h3>Draget under lupp</h3><p class="muted">Inga kraftkurvor i det här passet.</p></div>';
+  return `<div class="card"><h3>Draget under lupp</h3>
+    <div class="kv">${nTile('Fyllnadsgrad', `${Math.round(c.fill*100)} %`, 'medelkraft / toppkraft')}${nTile('Toppens läge', `${Math.round(c.pos*100)} %`, 'in i draget')}${nTile('Kraftutveckling', c.rfd ? `${fmtInt(c.rfd)} lbf/s` : '–', 'till toppen, ungefärlig')}${nTile('Formvariation', n.formCv != null ? `${fmtNum1(n.formCv)} %` : '–', n.isLive ? 'senaste 20 dragen' : 'sista tredjedelen')}</div>
+    <canvas class="chart" data-n="curves"></canvas>
+    <div class="legend">${n.isLive ? '<span><i style="background:var(--muted)"></i>Senaste 20 dragen</span><span><i style="background:var(--pace)"></i>Medel ±1 SD</span>' : '<span><i style="background:var(--pace)"></i>Första tredjedelen, ±1 SD</span><span><i style="background:var(--power)"></i>Sista tredjedelen, ±1 SD</span>'}</div>
+    <canvas class="chart short" data-n="form" style="margin-top:10px"></canvas>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Fyllnadsgrad per minut</span><span><i style="background:var(--spm)"></i>Toppens läge per minut</span></div>
+    <p class="ndesc">Fyllnadsgraden visar hur jämnt du trycker genom draget. Formvariationen är spridningen mellan dragens kurvor. Ett smalt band betyder repeterbar teknik, och bandet brukar vidgas innan effekten faller.</p></div>`;
+}
+function rateCardHTML(n){
+  const d = n.dec;
+  let txt = 'För få drag för att jämföra än.';
+  if (d) {
+    txt = `${n.decLabel}: effekt ${fmtPct(d.power)}, varav takt ${fmtPct(d.rate)} och arbete per drag ${fmtPct(d.work)}.`;
+    if (Math.abs(d.power) >= 2) txt += Math.abs(d.rate) > Math.abs(d.work) ? ' Förändringen kom främst från takten.' : ' Förändringen kom främst från kraften i varje drag.';
+  }
+  return `<div class="card"><h3>Takt eller kraft?</h3><p class="nlead">${esc(txt)}</p>
+    ${d ? `<div class="kv">${nTile('Takt', `${fmtNum1(d.spmB)} spm`, `från ${fmtNum1(d.spmA)}`)}${nTile('Arbete per drag', `${Math.round(d.wB)} J`, `från ${Math.round(d.wA)}`)}</div>` : ''}
+    <canvas class="chart" data-n="rate"></canvas>
+    <div class="legend"><span><i style="background:var(--pace)"></i>Tidigt i passet</span><span><i style="background:var(--power)"></i>Sent i passet</span></div>
+    <p class="ndesc">Varje prick är ett drag. Effekten är arbete per drag gånger takt, så uppdelningen är exakt: (1 + takt) × (1 + arbete) = 1 + effekt. Ett moln som glider åt höger har ökat takten, ett som sjunker har tappat kraft.</p></div>`;
+}
+function rhythmCardHTML(n){
+  const p = n.poinc;
+  return `<div class="card"><h3>Rytm</h3>
+    ${p ? `<div class="kv">${nTile('Cykeltid', `${fmtInt(p.mean)} ms`, `${fmtNum1(60000/p.mean)} spm`)}${nTile('SD1', `${fmtInt(p.sd1)} ms`, 'drag till drag')}${nTile('SD2', `${fmtInt(p.sd2)} ms`, 'långsam drift')}${nTile('Variation', `${fmtNum1(p.cv)} %`, 'CV för cykeltiden')}</div>` : '<p class="muted">Behöver minst 20 sammanhängande drag.</p>'}
+    <canvas class="chart sq" data-n="poinc"></canvas>
+    <p class="ndesc">Poincaré-diagram: varje dragcykel mot nästa. SD1 är bredden tvärs diagonalen och mäter oregelbundenheten från drag till drag. SD2 är längden längs diagonalen och fångar långsamma tempoväxlingar. Ett tätt moln betyder en stabil rytm.</p></div>`;
+}
+function powerCardHTML(n, all){
+  const p = n.pw, cp = Number(settings.cp) || 0, wp = Number(settings.wprime) || 0;
+  const { L } = prefList(all), cut = new Date(Date.now() - 90*86400000).toISOString();
+  n.cpEst = cpEstimate(recordsFrom(L.filter(x => x.start >= cut)).mmp);
+  const e = n.cpEst;
+  const estTxt = !e ? 'Uppskattningen av CP behöver bästa insatser på minst tre av längderna 2, 5, 10 och 20 minuter.'
+    : e.bad ? 'Dina bästa insatser ger ingen rimlig anpassning än, troligen för att de inte var maximala.'
+    : `Uppskattning från dina bästa insatser de senaste 90 dagarna: CP ${e.cp} W och W′ ${fmtNum1(e.wp)} kJ. Den är bara giltig om några av insatserna var maximala, annars blir CP för låg.`;
+  const w = n.wbal;
+  return `<div class="card"><h3>Effekt och trötthet</h3>
+    <div class="kv">${nTile('Normaliserad effekt', p.np ? `${fmtInt(p.np)} W` : '–', p.avg ? `snitt ${fmtInt(p.avg)} W` : '')}${nTile('Variabilitetsindex', fmt2(p.vi), 'NP / snitt')}${nTile('Intensitetsfaktor', fmt2(p.IF), cp ? `NP / CP ${cp} W` : 'kräver CP')}${nTile('Effektbelastning', p.load ? fmtInt(p.load) : '–', 'TSS-modellen')}</div>
+    ${w ? `<div class="kv">${nTile(n.isLive ? 'W′ kvar nu' : 'Lägsta W′', `${fmtNum1((n.isLive ? w.now : w.min)/1000)} kJ`, `${Math.round((n.isLive ? w.now : w.min)/w.w0*100)} % av ${fmtNum1(w.w0/1000)} kJ`)}</div>
+      <canvas class="chart short" data-n="wbal"></canvas><div class="legend"><span><i style="background:var(--accent)"></i>W′-balans, kJ</span></div>`
+      : '<p class="muted small" style="margin-top:8px">Ange kritisk effekt och W′ under Inställningar för W′-balans och intensitetsfaktor.</p>'}
+    <p class="ndesc">${esc(estTxt)}${cp && wp ? ` Inställt nu: CP ${cp} W, W′ ${wp} kJ.` : ''}</p>
+    ${e && !e.bad ? '<div class="btnrow"><button class="btn" data-act="usecp">Använd uppskattningen</button></div>' : ''}
+    <p class="ndesc">Normaliserad effekt väger ojämna pass tyngre eftersom fysiologin inte är linjär. W′ är energin över kritisk effekt. Den töms när du ligger över CP och fylls på under. Hamnar den under noll är CP eller W′ satta för lågt.</p></div>`;
+}
+function hrCardHTML(n){
+  const r = n.reg, m = n.model, row = n.modelRow, rec60 = n.recov.map(x => x.d60).filter(v => v != null);
+  return `<div class="card"><h3>Puls och kondition</h3>
+    <div class="kv">${nTile('Puls mot effekt', r ? `${signedNum(r.b*10, 1)} slag/10 W` : '–', r ? `R² ${fmt2(r.r2)}, ${r.n} minuter` : 'för få stabila minuter')}${nTile(`Puls vid ${m.ref || '–'} W`, row ? String(Math.round(row.est)) : '–', row ? `95 %: ${Math.round(row.lo)}–${Math.round(row.hi)}` : 'se nedan')}${nTile('Pulskinetik τ', n.tau ? `${Math.round(n.tau)} s` : '–', n.steps.length ? `${n.steps.length} effektsteg` : 'inga tydliga effektsteg')}${nTile('Pulsåterhämtning', rec60.length ? `${Math.round(mean(rec60))} slag` : '–', n.recov.length ? `på 60 s, ${n.recov.length} vilor` : 'inga vilor i passet')}${nTile('TRIMP', n.trimp ? fmtInt(n.trimp) : '–', n.trimp ? 'Banister' : 'kräver max- och vilopuls')}</div>
+    <canvas class="chart" data-n="hrp"></canvas>
+    <div class="legend"><span><i style="background:var(--pace)"></i>Stabila minuter, tidigt till sent</span><span><i style="background:var(--text)"></i>Regressionslinje</span></div>
+    <canvas class="chart short" data-n="hrref" style="margin-top:10px"></canvas>
+    <div class="legend"><span><i style="background:var(--hr)"></i>Puls vid ${m.ref || '–'} W per pass, med 95 % intervall</span></div>
+    <p class="ndesc">${r && r.b <= 0 ? 'Lutningen är negativ: pulsen steg av trötthet medan effekten låg still eller sjönk, så pulsdriften dominerar över effektvariationen i det här passet. ' : ''}${m.why ? esc(m.why) + ' ' : ''}Puls vid fast effekt skattas med en poolad modell. Lutningen tas från variationen inom alla pass, så att pass på olika effekt blir jämförbara. Sjunkande puls vid samma effekt betyder bättre kondition. Kortare τ betyder att hjärtat svarar snabbare.</p></div>`;
+}
+function loadCardHTML(all){
+  const { L } = prefList(all), pm = pmcSeries(L), src = settings.loadSrc === 'srpe' ? 'sRPE' : 'TRIMP';
+  if (!pm.days.length) return `<div class="card wide"><h3>Belastningsmodell</h3><p class="muted">${settings.loadSrc === 'srpe' ? 'Ange RPE efter passen så fylls modellen.' : 'Ange maxpuls och vilopuls under Inställningar så räknas TRIMP ur pulsen.'}</p></div>`;
+  const t = pm.days[pm.days.length - 1], tsbTxt = t.tsb < -20 ? 'tung belastning' : t.tsb < -5 ? 'normal träningsbelastning' : t.tsb <= 5 ? 'neutral' : 'utvilad';
+  const mono = monotonyRows(pm.days);
+  return `<div class="card wide"><h3>Belastningsmodell</h3>
+    <div class="kv">${nTile('Kondition, CTL', fmtNum1(t.ctl), '42 dygns medel')}${nTile('Trötthet, ATL', fmtNum1(t.atl), '7 dygns medel')}${nTile('Form, TSB', signedNum(t.tsb, 1), tsbTxt)}${nTile('Källa', src, `${pm.used} pass${pm.missing ? `, ${pm.missing} saknar värde` : ''}`)}</div>
+    <canvas class="chart" data-n="pmc"></canvas>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Kondition, CTL</span><span><i style="background:var(--power)"></i>Trötthet, ATL</span></div>
+    <div class="tablewrap" style="margin-top:8px"><table><tr><th>Vecka</th><th>Belastning</th><th>Monotoni</th><th>Strain</th></tr>
+    ${mono.map(o => `<tr><td>v. ${o.w}${o.days < 7 ? '*' : ''}</td><td>${fmtInt(o.tot)}</td><td>${o.mono != null ? fmt2(o.mono) : '–'}</td><td>${o.strain != null ? fmtInt(o.strain) : '–'}</td></tr>`).join('')}</table></div>
+    <p class="ndesc">Banisters modell: kondition och trötthet är exponentiella medel av dygnsbelastningen över 42 och 7 dygn, och formen är skillnaden. Monotoni enligt Foster är veckans dygnsmedel delat med dess standardavvikelse; värden över 2 har kopplats till överbelastning. En stjärna betyder en ofullständig vecka. Bara SkiErg-pass räknas, så löpning och skidåkning saknas och tröttheten underskattas. Konditionsvärdet säger lite de första veckorna.</p></div>`;
+}
+function drawNerd(n, all){
+  const body = $('#nerdBody'), q = k => body.querySelector(`[data-n=${k}]`), xm = v => `${Math.round(v)} min`;
+  if (n.curveSum) {
+    drawCurves(q('curves'), n.isLive ? { lines:n.lines, bands:[n.band && { ...n.band, color:cssVar('--pace') }] }
+      : { bands:[n.bandEarly && { ...n.bandEarly, color:cssVar('--pace') }, n.bandLate && { ...n.bandLate, color:cssVar('--power') }] });
+    const bm = n.byMin || [];
+    drawChart(q('form'), [
+      { pts: bm.map(x => [x.min, x.fill*100]), color:cssVar('--accent'), fmt: v => `${fmtNum1(v)} %` },
+      { pts: bm.map(x => [x.min, x.pos*100]), color:cssVar('--spm'), fmt: v => `${fmtNum1(v)} %` }
+    ], { xfmt: xm, empty:'Behöver några minuter med kraftkurvor' });
+  }
+  const rw = n.rows.length > 1500 ? n.rows.slice(-1500) : n.rows, t0 = rw.length ? rw[0].t : 0, t1 = rw.length ? rw[rw.length-1].t : 1;
+  drawScatter(q('rate'), rw.map(r => ({ x:60/r.cyc, y:r.work, c:(r.t - t0)/Math.max(1, t1 - t0) })), { xlab:'Takt, spm', ylab:'J per drag', fx: v => fmtNum1(v), empty:'Inga drag än' });
+  if (n.poinc) drawScatter(q('poinc'), n.poinc.pts.map(p => ({ x:p[0], y:p[1], c:p[2] })), { square:true, identity:true, xlab:'Cykeltid n, ms', ylab:'Cykeltid n+1, ms', r:2 });
+  else drawScatter(q('poinc'), [], { empty:'Behöver fler drag' });
+  if (n.wbal) {
+    const w = n.wbal;
+    drawChart(q('wbal'), [{ pts: w.pts.map(([t, v]) => [t/60, v/1000]), color:cssVar('--accent'), min:Math.min(0, w.min/1000), max:w.w0/1000, fmt: v => `${fmtNum1(v)}` }], { xfmt: xm });
+  }
+  drawScatter(q('hrp'), n.mins.map((x, i) => ({ x:x.p, y:x.hr, c:i/Math.max(1, n.mins.length - 1) })), { xlab:'Effekt, W', ylab:'Puls', line: n.reg, r:3.5, alpha:0.85, empty:'Behöver stabila minuter med puls efter uppvärmningen' });
+  const rows = n.model.rows || [];
+  if (rows.length) {
+    const lo = Math.floor(Math.min(...rows.map(r => r.lo)) - 2), hi = Math.ceil(Math.max(...rows.map(r => r.hi)) + 2);
+    drawChart(q('hrref'), [
+      { pts: rows.map((r, i) => [i, r.est]), color:cssVar('--hr'), min:lo, max:hi, width:2.5 },
+      { pts: rows.map((r, i) => [i, r.lo]), color:cssVar('--hr'), min:lo, max:hi, width:1, dash:[4, 4], label:false },
+      { pts: rows.map((r, i) => [i, r.hi]), color:cssVar('--hr'), min:lo, max:hi, width:1, dash:[4, 4], label:false }
+    ], { xmin:0, xmax:Math.max(1, rows.length - 1), xfmt: v => rows[Math.round(v)] ? fmtDateShort(rows[Math.round(v)].s.start) : '' });
+  } else drawChart(q('hrref'), [], { empty: rows.length === 0 && n.model.why ? 'Ingen jämförelse än' : 'Ingen data' });
+  const { L } = prefList(all), pm = pmcSeries(L);
+  if (pm.days.length) {
+    const hi = Math.max(1, ...pm.days.map(d => Math.max(d.ctl, d.atl)))*1.1, D = pm.days;
+    drawChart(q('pmc'), [
+      { pts: D.map((d, i) => [i, d.ctl]), color:cssVar('--accent'), min:0, max:hi, width:2.5, fmt: v => fmtNum1(v) },
+      { pts: D.map((d, i) => [i, d.atl]), color:cssVar('--power'), min:0, max:hi, width:2, label:false }
+    ], { xmin:0, xmax:Math.max(1, D.length - 1), xfmt: v => D[Math.round(v)] ? fmtDateShort(D[Math.round(v)].date.toISOString()) : '' });
+  }
+}
+async function renderNerd(force){
+  if (nerdBusy) return;
+  nerdBusy = true; nerdT = Date.now();
+  try {
+    let all = []; try { all = await DB.all(); } catch(e) {}
+    all = all.filter(x => x.summary && !x.draft);
+    fillNerdSelect(all);
+    const sel = $('#nerdPass').value, s = sel === 'live' && rec ? rec : all.find(x => x.id === sel) || null, body = $('#nerdBody');
+    if (!s) { body.innerHTML = '<div class="card wide"><h3>Inga pass än</h3><p class="muted">Kör ett pass eller ett demopass, så fylls fliken med analyser.</p></div>' + loadCardHTML(all); return; }
+    const n = nerdCalc(s, all);
+    body.innerHTML = strokeCardHTML(n) + rateCardHTML(n) + rhythmCardHTML(n) + powerCardHTML(n, all) + hrCardHTML(n) + loadCardHTML(all);
+    const b = body.querySelector('[data-act=usecp]');
+    if (b && n.cpEst && !n.cpEst.bad) b.onclick = () => {
+      settings.cp = String(n.cpEst.cp); settings.wprime = n.cpEst.wp.toFixed(1); saveSettings();
+      $('#setCp').value = settings.cp; $('#setWp').value = settings.wprime; toast('CP och W′ är sparade'); renderNerd(true);
+    };
+    await new Promise(r => requestAnimationFrame(r));
+    drawNerd(n, all);
+  } finally { nerdBusy = false; }
+}
+
+/* ============================================================ Nörd: analysfiler */
+function nerdMd(s, all){
+  const n = nerdCalc(s, all), c = n.curveSum, d = n.dec, p = n.poinc, pw = n.pw, row = n.modelRow, cp = Number(settings.cp) || 0;
+  const rows = [
+    ['Normaliserad effekt (NP)', pw.np ? `${Math.round(pw.np)} W` : null, '30 s rullande medel, fjärde potens, medel, fjärde rot'],
+    ['Variabilitetsindex', pw.vi ? fmt2(pw.vi) : null, 'NP delat med snitteffekt; 1,00 är helt jämnt'],
+    ...(cp ? [['Intensitetsfaktor', pw.IF ? fmt2(pw.IF) : null, `NP delat med kritisk effekt ${cp} W`], ['Effektbelastning', pw.load ? Math.round(pw.load) : null, 'Tid × NP × IF / (CP × 3600) × 100']] : []),
+    ...(n.wbal ? [['Lägsta W′-balans', `${fmtNum1(n.wbal.min/1000)} kJ av ${fmtNum1(n.wbal.w0/1000)} kJ`, 'Skibas differentialmodell']] : []),
+    ['Kraftkurvans fyllnadsgrad', c ? `${Math.round(c.fill*100)} %` : null, 'Medelkraft delat med toppkraft per drag'],
+    ['Toppens läge i draget', c ? `${Math.round(c.pos*100)} %` : null, 'Andel av dragtiden fram till toppkraft'],
+    ['Kraftutveckling till topp', c && c.rfd ? `${Math.round(c.rfd)} lbf/s` : null, 'Toppkraft delat med tid till topp, ungefärlig'],
+    ['Formvariation, sista tredjedelen', n.formCv != null ? `${fmtNum1(n.formCv)} %` : null, 'Medel-SD mellan dragens kurvor relativt toppen'],
+    ['Effektändring, andra halvan', d ? `${fmtPct(d.power)}: takt ${fmtPct(d.rate)}, arbete per drag ${fmtPct(d.work)}` : null, 'Exakt uppdelning: (1 + takt)(1 + arbete) = 1 + effekt'],
+    ['Rytm, Poincaré', p ? `cykel ${Math.round(p.mean)} ms, SD1 ${Math.round(p.sd1)} ms, SD2 ${Math.round(p.sd2)} ms, CV ${fmtNum1(p.cv)} %` : null, 'SD1 är variation från drag till drag, SD2 långsam drift'],
+    ['Puls mot effekt', n.reg ? `${signedNum(n.reg.b*10, 1)} slag per 10 W (R² ${fmt2(n.reg.r2)}, ${n.reg.n} minuter)` : null, 'Linjär regression på stabila minuter efter uppvärmningen'],
+    ['Puls vid referenseffekt', row ? `${Math.round(row.est)} slag vid ${n.model.ref} W (95 %: ${Math.round(row.lo)}–${Math.round(row.hi)})` : null, 'Poolad modell, lutningen skattad inom alla pass'],
+    ['Pulskinetik τ', n.tau ? `${Math.round(n.tau)} s (${n.steps.length} effektsteg)` : null, 'Tidskonstant för pulsens ökning efter effektsteg'],
+    ['Pulsåterhämtning', n.recov.length ? n.recov.map(x => Math.round(x.d60 ?? x.d30)).join(', ') + ' slag' : null, 'Pulsfall under första 60 s i varje vila'],
+    ['TRIMP', n.trimp ? Math.round(n.trimp) : null, 'Banisters pulsbaserade belastning']
+  ];
+  return ['', '## Nördmått', mdTable(['Mått','Värde','Definition'], rows)];
+}
+function nerdHistMd(all){
+  const { L } = prefList(all), pm = pmcSeries(L), out = [];
+  if (pm.days.length) {
+    const t = pm.days[pm.days.length - 1];
+    out.push('', `## Belastningsmodell (Banister, ${settings.loadSrc === 'srpe' ? 'sRPE' : 'TRIMP'})`,
+      `Kondition (CTL, 42 dygn) ${fmtNum1(t.ctl)}, trötthet (ATL, 7 dygn) ${fmtNum1(t.atl)}, form (TSB) ${signedNum(t.tsb, 1)}. ${pm.missing} pass saknar belastningsvärde. Bara SkiErg-pass ingår.`,
+      '', mdTable(['Vecka','Belastning','Monotoni','Strain'], monotonyRows(pm.days).map(o => [o.k, Math.round(o.tot), o.mono != null ? fmt2(o.mono) : null, o.strain != null ? Math.round(o.strain) : null])));
+  }
+  const m = hrModel(L.slice().sort((a, b) => a.start.localeCompare(b.start)));
+  if (m.rows && m.rows.length) out.push('', `## Puls vid ${m.ref} W per pass (poolad modell, ${fmtNum1(m.b*10)} slag per 10 W)`,
+    mdTable(['Datum','Puls','95 % intervall','Minuter','Passets snitteffekt'], m.rows.map(r => [fmtDate(r.s.start), Math.round(r.est), `${Math.round(r.lo)}–${Math.round(r.hi)}`, r.n, Math.round(r.mp)])));
+  const cut = new Date(Date.now() - 90*86400000).toISOString(), e = cpEstimate(recordsFrom(L.filter(x => x.start >= cut)).mmp);
+  if (e && !e.bad) out.push('', '## Kritisk effekt, uppskattning', `CP ${e.cp} W och W′ ${fmtNum1(e.wp)} kJ från ${e.n} varaktigheter (${e.d.map(fmtDur).join(', ')}) de senaste 90 dagarna. Bygger på bästa insatser i vanliga pass och gäller bara om några av dem var maximala.`);
+  return out;
+}
+
 /* ============================================================ Rendering */
 let dirty = false;
 function markDirty(){ if (!dirty) { dirty = true; setTimeout(() => { dirty = false; if (currentView==='live') renderLive(); }, 200); } }
@@ -1523,13 +2057,14 @@ Analysera passet ärligt och konkret:
 - Effektivitet: meter per pulsslag och hur den står sig mot mina tidigare minuter vid samma effekt.
 - Belastning: upplevd ansträngning (Borg CR10), sRPE och tid i pulszoner enligt Olympiatoppens I-skala.
 - Mål, spökåkare och personbästa, om sådana finns i datan.
+- Nördmåtten: kraftkurvans form, takt mot kraft, rytm, normaliserad effekt, W′-balans, puls vid referenseffekt och pulskinetik.
 - Hur passet står sig mot historiken: trender, jämförbara pass, framsteg eller varningstecken.
 - Två till tre konkreta, genomförbara råd för kommande pass.
 
 Använd siffror ur datan när du argumenterar. Var tydlig med osäkerhet när underlaget är tunt, till exempel om puls saknas eller historiken är kort. Hitta inte på värden som inte finns i datan. Svara på svenska, sakligt och koncist.`;
 const HIST_PROMPT = `Du är en erfaren tränare inom längdskidåkning och SkiErg-träning med gedigen kunskap i träningsfysiologi. Filen innehåller alla mina sparade SkiErg-pass.
 
-Analysera min långsiktiga utveckling: trender i effekt, tempo och puls vid jämförbar belastning, träningsvolym och fördelning mellan passtyper över tid, samt tecken på framsteg, stagnation eller överbelastning. Använd veckobelastningen (sRPE), zonfördelningen och personbästa. Föreslå hur jag bör lägga upp de kommande veckorna. Använd siffror ur datan, var tydlig med osäkerhet och hitta inte på värden. Svara på svenska.`;
+Analysera min långsiktiga utveckling: trender i effekt, tempo och puls vid jämförbar belastning, träningsvolym och fördelning mellan passtyper över tid, samt tecken på framsteg, stagnation eller överbelastning. Använd veckobelastningen (sRPE), zonfördelningen, personbästa, belastningsmodellen (CTL, ATL, TSB och monotoni) och pulsen vid referenseffekt. Föreslå hur jag bör lägga upp de kommande veckorna. Använd siffror ur datan, var tydlig med osäkerhet och hitta inte på värden. Svara på svenska.`;
 const cell = v => v==null || v==='' || (typeof v==='number' && !isFinite(v)) ? '–' : String(v).replace(/\|/g,'/').replace(/\s*\n\s*/g,' ');
 const mdRow = c => '| ' + c.map(cell).join(' | ') + ' |';
 const mdTable = (head, rows) => [mdRow(head), '|' + head.map(()=>' --- ').join('|') + '|', ...rows.map(mdRow)].join('\n');
@@ -1584,7 +2119,7 @@ async function buildPassFile(s){
       ['Meter per pulsslag', fmtMpb(m.mpb), `Distans delat med antal pulsslag. Räknas bara på minuter efter ${EFF.warmup/60} minuters uppvärmning, med minst ${EFF.minP} W, puls och högst 15 % effektändring mot minuten före (${(m.effMin||[]).length} minuter)`],
       ['Effektivitet mot historiken', m.eff && m.eff.index != null ? fmtPct(m.eff.index) : null, `Snitt per minut av meter per pulsslag jämfört med medianen för mina tidigare minuter vid samma effekt (±10 %). Inom ±${effBand()} % räknas som i nivå`]
     ]),
-    ...goalMd(s), ...zonesMd(s), ...mmpMd(s, all), ...courseMd(s, all),
+    ...goalMd(s), ...zonesMd(s), ...mmpMd(s, all), ...courseMd(s, all), ...nerdMd(s, all),
     '', '## Per minut',
     mdTable(['Minut','Watt','Takt (spm)','Puls','Tempo /500 m','m/slag'], m.perMin.map(x => [x.min, x.p, x.spm, x.hr, fmtPace(x.pace), x.mpb != null ? fmtMpb(x.mpb) : null])),
     ...(splits.length ? ['', '## Splittar', mdTable(['Nr','Tid','Meter','Tempo /500 m','Watt','Takt','Puls'],
@@ -1599,7 +2134,7 @@ async function exportHistoryMd(){
   try { all = (await DB.all()).filter(s => s.summary).sort((a,b) => a.start.localeCompare(b.start)); } catch(e) {}
   if (!all.length) { toast('Det finns inga pass att exportera'); return; }
   const text = [`# SkiErg-historik, ${all.length} pass`, '', `Exporterad från SkiErg Live ${fmtDate(new Date().toISOString())}.`,
-    '', '## Instruktion', HIST_PROMPT, ...aboutLines(), '', '## Alla pass (äldst först)', histTable(all), ...histExtrasMd(all), ''].join('\n');
+    '', '## Instruktion', HIST_PROMPT, ...aboutLines(), '', '## Alla pass (äldst först)', histTable(all), ...histExtrasMd(all), ...nerdHistMd(all), ''].join('\n');
   shareOrDownload(`skierg_historik_${fileStamp(new Date().toISOString())}`, text);
 }
 function canShareFiles(){
@@ -1812,10 +2347,10 @@ function simSummary(S){
 let currentView = 'live';
 function show(view){
   currentView = view;
-  ['live','history','log','settings'].forEach(v => $('#view-'+v).classList.toggle('hidden', v !== view));
+  ['live','nerd','history','settings'].forEach(v => $('#view-'+v).classList.toggle('hidden', v !== view));
   document.querySelectorAll('nav.bottom button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   if (view === 'history') renderHistory();
-  if (view === 'log') renderLog();
+  if (view === 'nerd') { renderNerd(true); if ($('#logCard').open) renderLog(); }
   if (view === 'live') { renderLive(); drawLiveChart(); drawForce(); trackT = 0; renderTrack(); renderZoneLive(); }
   window.scrollTo(0,0);
 }
@@ -1827,6 +2362,7 @@ setInterval(() => {
     if (currentView === 'live') drawLiveChart();
   }
   if (currentView === 'live') { renderEffLive(); renderZoneLive(); renderTrack(); }
+  if (currentView === 'nerd' && rec && Date.now() - nerdT > 2500) renderNerd();
   if (rec && !finTimer && Date.now() - rec.lastChange > 120000) finalize('ingen aktivitet på två minuter');
 }, 1000);
 window.addEventListener('beforeunload', e => { if (rec) { e.preventDefault(); e.returnValue = ''; } });
@@ -1880,6 +2416,13 @@ window.addEventListener('resize', () => { if (currentView === 'live') { drawLive
     settings.course = { startedAt: rec ? rec.start : new Date().toISOString() }; saveSettings();
     await rebuildCourse(); lastCp = null; trackT = 0; renderTrack(); toast('Vasaloppet börjar om i Berga by');
   };
+  const numSet = (id, key) => { $(id).value = settings[key] ?? '';
+    $(id).onchange = e => { settings[key] = String(e.target.value).replace(',', '.').trim(); saveSettings(); if (currentView === 'nerd') renderNerd(true); }; };
+  numSet('#setRestHr', 'restHr'); numSet('#setCp', 'cp'); numSet('#setWp', 'wprime'); numSet('#setRefW', 'refW');
+  $('#setSex').value = settings.sex; $('#setSex').onchange = e => { settings.sex = e.target.value; saveSettings(); };
+  $('#setLoadSrc').value = settings.loadSrc; $('#setLoadSrc').onchange = e => { settings.loadSrc = e.target.value; saveSettings(); };
+  $('#nerdPass').onchange = e => { nerdSelWanted = e.target.value; renderNerd(true); };
+  $('#logCard').addEventListener('toggle', () => { if ($('#logCard').open) renderLog(); });
   setConn('none'); show('live'); renderEffLive();
 })();
 </script>
