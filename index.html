@@ -154,6 +154,46 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
 .rpe button{padding:9px 0;border-radius:8px;border:1px solid var(--line);background:var(--surface2);color:var(--text);font-weight:700}
 .rpe button.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
 .pblist{margin:6px 0 0;padding-left:18px}
+.courseline{margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line)}
+.ghostline{margin:6px 0 0}
+#btnStopTop{display:none}
+
+/* Dator: hela live-vyn på en skärm utan scrollning. Storlekar i vh så att den skalar med skärmhöjden. */
+@media (min-width:1100px){
+  main{max-width:1680px;padding:10px 16px calc(50px + env(safe-area-inset-bottom,0px))}
+  #btnStopTop:not(.hidden){display:inline-block}
+  #view-live #btnStop{display:none!important}
+  #view-live:not(.hidden){display:grid;gap:10px;align-items:stretch;
+    grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:"board eff chart" "track zone stats" "track force stats"}
+  /* Rader för välkomstkort och sammanfattning finns bara när de syns, annars stjäl de höjd */
+  #view-live:has(#welcome:not(.hidden)), #view-live:has(#summaryLive:not(:empty)){
+    grid-template-areas:"welcome welcome welcome" "sum sum sum" "board eff chart" "track zone stats" "track force stats"}
+  #view-live > .card, #view-live > .board, #view-live > .stats{margin:0}
+  #welcome{grid-area:welcome} #summaryLive{grid-area:sum} #summaryLive:empty{display:none}
+  #view-live .board{grid-area:board;display:flex;flex-direction:column;justify-content:space-between;padding:10px 18px 12px}
+  #effCard{grid-area:eff} #chartCard{grid-area:chart} #trackCard{grid-area:track} #zoneCard{grid-area:zone} #forceCard{grid-area:force}
+  #view-live .stats{grid-area:stats;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;align-content:stretch}
+  #view-live .stats>div{border-right:1px solid var(--line);padding:6px 10px;display:flex;flex-direction:column;justify-content:center}
+  #view-live .stats>div:nth-child(3n){border-right:0}
+  #view-live .stats .v{font-size:min(3.2vh,26px)}
+  #view-live .card{padding:10px 14px}
+  #view-live h3{font-size:15px;margin-bottom:4px}
+  .pace-main .v{font-size:min(11vh,150px)}
+  .trio .v{font-size:min(6vh,72px)}
+  .elapsed{font-size:min(4vh,30px)}
+  #chartLive{height:max(15vh,110px)}
+  #chartForce{height:max(7vh,64px)}
+  .track svg{max-height:13vh}
+  .tinfo .v{font-size:min(3.2vh,26px)}
+  #effCard .effwrap{flex-wrap:nowrap;gap:12px}
+  #effCard .effgauge{flex:0 1 55%;max-width:none}
+  #effCard .effgauge svg{max-height:19vh}
+  #effCard .efftext{flex:1 1 45%;min-width:0}
+  #effCard .efftext .v{font-size:min(3.6vh,32px)}
+  .zseg{padding:4px 2px}
+  #zoneLive p, #trackInfo p.muted{font-size:12.5px}
+}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));background:var(--text);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s;z-index:20;pointer-events:none;max-width:90vw}
 .toast.show{opacity:1}
 </style>
@@ -162,6 +202,7 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
 
 <header class="top">
   <div class="brand"><b>SkiErg Live</b><span id="connPill" class="pill">Ej ansluten</span></div>
+  <button class="btn danger hidden" id="btnStopTop">Avsluta och spara passet</button>
   <button class="btn" id="btnHr" title="Anslut ett eget pulsband via Bluetooth">Pulsband</button>
   <button class="btn primary" id="btnConnect">Anslut PM5</button>
 </header>
@@ -219,7 +260,7 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
       <div id="zoneLive"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="effCard">
       <h3>Meter per pulsslag mot din historik</h3>
       <div class="effwrap">
         <div class="effgauge" id="gaugeLive"></div>
@@ -245,12 +286,12 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
       <div><div class="k">Dragfaktor</div><div class="v" id="v-drag">–</div></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="chartCard">
       <h3>Senaste tre minuterna</h3>
       <canvas id="chartLive" class="chart"></canvas>
       <div class="legend"><span><i style="background:var(--power)"></i>Watt</span><span><i style="background:var(--hr)"></i>Puls</span></div>
     </div>
-    <div class="card">
+    <div class="card" id="forceCard">
       <h3>Kraftkurva, senaste draget</h3>
       <canvas id="chartForce" class="chart short"></canvas>
     </div>
@@ -588,6 +629,7 @@ async function finalize(reason){
 function updateRecUI(){
   $('#recBadge').classList.toggle('hidden', !rec);
   $('#btnStop').classList.toggle('hidden', !rec);
+  $('#btnStopTop').classList.toggle('hidden', !rec);
 }
 // Autospar var 30:e sekund så att ett pass överlever om fliken laddas om
 setInterval(() => { if (rec && !finTimer) DB.put({ ...rec, draft:true }).catch(()=>{}); }, 30000);
@@ -979,6 +1021,8 @@ function ghostGap(goal){
   else { const v = live.speed || (t > 0 ? d/t : 0); sec = v > 0 ? m/v : null; }
   return { m, sec, gd };
 }
+// Demobanan startar strax före Smågan så att en kontrollpassage syns redan i första demopasset
+const DEMO_COURSE_START = 10600;
 let courseBase = { pm5:{ dist:0, time:0, n:0 }, demo:{ dist:0, time:0, n:0 } };
 async function rebuildCourse(){
   const nb = { pm5:{ dist:0, time:0, n:0 }, demo:{ dist:0, time:0, n:0 } }, c = settings.course;
@@ -990,8 +1034,23 @@ async function rebuildCourse(){
       nb[k].dist += s.summary.distance || 0; nb[k].time += s.summary.duration || 0; nb[k].n++;
     }
   }
+  if (c && c.startedAt) nb.demo.dist += DEMO_COURSE_START;
   courseBase = nb;
 }
+const courseStarted = () => !!(settings.course && settings.course.startedAt);
+// Kontrollpassager räknas i alla lägen så länge Vasaloppet är startat
+function courseCheck(){
+  if (!courseStarted() || !rec) return;
+  const i = cpIndex(courseNow().total);
+  if (lastCp == null) lastCp = i;
+  else if (i > lastCp) { lastCp = i; toast(i === COURSE.cps.length-1 ? 'I mål i Mora!' : `Du passerade ${COURSE.cps[i][0]} efter ${COURSE.cps[i][1]/1000} km`); }
+}
+function courseLine(){
+  if (!courseStarted()) return '';
+  const cn = courseNow(), i = cpIndex(cn.total), next = COURSE.cps[Math.min(i+1, COURSE.cps.length-1)];
+  return `<p class="small courseline">Vasaloppet${cn.demo ? ' (demo)' : ''}: <b>${fmtKm(cn.total)} km</b> av 90${cn.total >= COURSE.total ? ', i mål i Mora' : `, ${fmtKm(next[1] - cn.total)} km till ${esc(next[0])}`}</p>`;
+}
+function setHTML(el, html){ if (el && el._h !== html) { el.innerHTML = html; el._h = html; } }
 function courseNow(){
   const k = (rec ? rec.source : connState === 'demo' ? 'demo' : 'pm5') === 'demo' ? 'demo' : 'pm5';
   const base = courseBase[k], cur = rec ? (live.distance || 0) : 0;
@@ -1033,11 +1092,13 @@ function renderTrack(){
   if (rec && !rec.target && settings.target.mode === 'auto') { const p = pmTarget(); if (p) { rec.target = { ...p, src:'pm5' }; loadGhost(); } }
   const goal = currentGoal(), pose = (live.strokeCount || 0) % 2 === 0;
   const titleEl = $('#trackTitle'), svgEl = $('#trackSvg'), info = $('#trackInfo');
+  courseCheck();
   if (goal && goal.type === 'course') { renderCourseTrack(pose); return; }
   if (!goal) {
     titleEl.textContent = 'Inget mål';
-    svgEl.innerHTML = trackSVG({ me: 0, pose });
-    info.innerHTML = '<p class="muted small" style="margin-top:6px">Programmera ett distans- eller tidspass på PM5, välj ett eget mål eller kör Vasaloppet hemma under Ändra mål.</p>';
+    setHTML(svgEl, trackSVG({ me: 0, pose }));
+    setHTML(info, '<p class="muted small" style="margin-top:6px">Programmera ett distans- eller tidspass på PM5 eller välj ett eget mål under Ändra mål.</p>' +
+      (courseStarted() ? courseLine() : '<div class="btnrow"><button class="btn" data-act="startvasa">Starta Vasaloppet hemma</button></div>'));
     return;
   }
   const t = rec ? (live.elapsed || 0) : 0, d = rec ? (live.distance || 0) : 0;
@@ -1064,23 +1125,21 @@ function renderTrack(){
     c3 = ['Mot spökåkaren', `${gap.m >= 0 ? '+' : '−'}${fmtInt(Math.abs(gap.m))} m`, gap.sec != null ? `${fmtNum1(Math.abs(gap.sec))} s ${gap.sec >= 0 ? 'före' : 'efter'}` : ''];
   }
   titleEl.textContent = `${fmtGoal(goal)} ${goal.src === 'pm5' ? 'från PM5' : 'eget mål'}`;
-  svgEl.innerHTML = trackSVG({ me: Math.max(0, me), ghost: gh, ticks, pose, label: fmtGoal(goal) });
+  setHTML(svgEl, trackSVG({ me: Math.max(0, me), ghost: gh, ticks, pose, label: fmtGoal(goal) }));
   const col = (c, k) => `<div><div class="k">${c[0]}</div><div class="v ${k || ''}">${esc(c[1])}</div><div class="sub">${esc(c[2])}</div></div>`;
-  info.innerHTML = `<div class="tinfo">${col(c1)}${col(c2)}${col(c3, cls)}</div>` +
-    (ghost ? `<p class="muted small" style="margin-top:6px">Spökåkaren är ditt bästa pass med samma mål, ${esc(fmtDate(ghost.date))}: ${goal.type === 'dist' ? fmtTime(ghost.result.time) : fmtInt(ghost.result.dist) + ' m'}.</p>` : '');
+  setHTML(info, `<div class="tinfo">${col(c1)}${col(c2)}${col(c3, cls)}</div>` +
+    (ghost ? `<p class="muted small ghostline">Spökåkare: bästa passet med samma mål, ${esc(fmtDateShort(ghost.date))}, ${goal.type === 'dist' ? fmtTime(ghost.result.time) : fmtInt(ghost.result.dist) + ' m'}.</p>` : '') +
+    courseLine());
 }
 function renderCourseTrack(pose){
   const cn = courseNow(), i = cpIndex(cn.total), next = COURSE.cps[Math.min(i+1, COURSE.cps.length-1)], done = cn.total >= COURSE.total;
   $('#trackTitle').textContent = 'Vasaloppet hemma' + (cn.demo ? ' (demo)' : '');
-  $('#trackSvg').innerHTML = trackSVG({ me: cn.total/COURSE.total, ticks: courseTicks(), pose, label:'Vasaloppet, Berga by till Mora' });
-  if (rec) {
-    if (lastCp == null) lastCp = i;
-    else if (i > lastCp) { lastCp = i; toast(i === COURSE.cps.length-1 ? 'I mål i Mora!' : `Du passerade ${COURSE.cps[i][0]} efter ${COURSE.cps[i][1]/1000} km`); }
-  }
-  $('#trackInfo').innerHTML = `<div class="tinfo">
+  setHTML($('#trackSvg'), trackSVG({ me: cn.total/COURSE.total, ticks: courseTicks(), pose, label:'Vasaloppet, Berga by till Mora' }));
+  setHTML($('#trackInfo'), `<div class="tinfo">
     <div><div class="k">Avklarat</div><div class="v">${fmtKm(cn.total)}</div><div class="sub">av 90 km</div></div>
     <div><div class="k">${done ? 'I mål' : 'Nästa kontroll'}</div><div class="v">${done ? 'Mora' : fmtKm(next[1] - cn.total)}</div><div class="sub">${done ? 'total tid ' + fmtClock(cn.base.time + (rec ? live.elapsed || 0 : 0)) : 'km till ' + esc(next[0])}</div></div>
-    <div><div class="k">Detta pass</div><div class="v">${fmtKm(cn.cur)}</div><div class="sub">km, ${cn.base.n} pass före</div></div></div>`;
+    <div><div class="k">Detta pass</div><div class="v">${fmtKm(cn.cur)}</div><div class="sub">km, ${cn.base.n} pass före</div></div></div>` +
+    (cn.demo ? '<p class="muted small ghostline">Demobanan startar strax före Smågan så att du ser en kontrollpassage direkt.</p>' : ''));
 }
 
 /* ============================================================ Pulszoner och upplevd ansträngning */
@@ -1213,7 +1272,7 @@ function histExtrasHTML(all){
   if (c && c.startedAt) {
     const b = courseBase[src], i = cpIndex(b.dist), next = COURSE.cps[Math.min(i+1, COURSE.cps.length-1)];
     h += `<div class="card"><h3>Vasaloppet hemma${badge}</h3><div class="track">${trackSVG({ me: Math.min(1, b.dist/COURSE.total), ticks: courseTicks(), pose:true, label:'Vasaloppet' })}</div>
-      <p class="small" style="margin-top:4px">${fmtKm(Math.min(b.dist, COURSE.total))} km av 90 på ${b.n} pass och ${fmtClock(b.time)}. ${b.dist >= COURSE.total ? 'I mål i Mora!' : `Senast passerat: ${esc(COURSE.cps[i][0])}. ${fmtKm(next[1] - b.dist)} km kvar till ${esc(next[0])}.`}</p></div>`;
+      <p class="small" style="margin-top:4px">${fmtKm(Math.min(b.dist, COURSE.total))} km av 90 på ${b.n} pass och ${fmtClock(b.time)}${src === 'demo' ? ', demobanan startar strax före Smågan' : ''}. ${b.dist >= COURSE.total ? 'I mål i Mora!' : `Senast passerat: ${esc(COURSE.cps[i][0])}. ${fmtKm(next[1] - b.dist)} km kvar till ${esc(next[0])}.`}</p></div>`;
   }
   if (wk.length) h += `<div class="card"><h3>Belastning per vecka${badge}</h3><div class="tablewrap"><table>
       <tr><th>Vecka</th><th>Pass</th><th>Tid</th><th>sRPE</th><th>I1–I2</th><th>I3–I5</th></tr>
@@ -1265,7 +1324,7 @@ function mmpMd(s, all){
 function courseMd(s, all){
   const c = settings.course;
   if (!c || !c.startedAt || s.start < c.startedAt) return [];
-  const dist = all.filter(x => x.summary && !x.draft && sameSrc(x, s) && x.start >= c.startedAt && x.start <= s.start).reduce((a, x) => a + (x.summary.distance || 0), 0);
+  const dist = (s.source === 'demo' ? DEMO_COURSE_START : 0) + all.filter(x => x.summary && !x.draft && sameSrc(x, s) && x.start >= c.startedAt && x.start <= s.start).reduce((a, x) => a + (x.summary.distance || 0), 0);
   return ['', '## Vasaloppet hemma', `${fmtKm(Math.min(dist, COURSE.total))} km av 90 avklarade efter det här passet, räknat från ${fmtDate(c.startedAt)}.`];
 }
 function histExtrasMd(all){
@@ -1788,7 +1847,7 @@ window.addEventListener('resize', () => { if (currentView === 'live') { drawLive
   $('#btnConnect').onclick = () => (connState === 'pm5' || connState === 'reconnecting') ? disconnectPM() : connectPM();
   $('#btnHr').onclick = connectHR;
   $('#btnDemo').onclick = startDemo;
-  $('#btnStop').onclick = () => { if (confirm('Avsluta och spara passet nu?')) finalize('avslutat manuellt'); };
+  $('#btnStop').onclick = $('#btnStopTop').onclick = () => { if (confirm('Avsluta och spara passet nu?')) finalize('avslutat manuellt'); };
   $('#btnLogPause').onclick = e => { logPaused = !logPaused; e.currentTarget.textContent = logPaused ? 'Fortsätt' : 'Pausa'; };
   $('#btnLogClear').onclick = () => { rawLog.length = 0; renderLog(); };
   $('#btnLogCopy').onclick = async () => { try { await navigator.clipboard.writeText(rawLog.join('\n')); toast('Loggen är kopierad'); } catch(e) { toast('Kunde inte kopiera'); } };
@@ -1806,7 +1865,7 @@ window.addEventListener('resize', () => { if (currentView === 'live') { drawLive
   const onTgt = async () => {
     settings.target = { mode: $('#tgtMode').value, dist: Number($('#tgtDist').value) || 5000, time: Number(String($('#tgtTime').value).replace(',', '.')) || 30 };
     if (settings.target.mode === 'vasa' && !(settings.course && settings.course.startedAt)) {
-      settings.course = { startedAt: rec ? rec.start : new Date().toISOString() }; await rebuildCourse();
+      settings.course = { startedAt: rec ? rec.start : new Date().toISOString() }; await rebuildCourse(); lastCp = null;
       toast('Vasaloppet hemma har startat i Berga by');
     }
     saveSettings(); syncTgtUI();
@@ -1815,6 +1874,7 @@ window.addEventListener('resize', () => { if (currentView === 'live') { drawLive
   };
   ['#tgtMode', '#tgtDist', '#tgtTime'].forEach(id => $(id).onchange = onTgt);
   $('#btnTgt').onclick = () => $('#tgtPanel').classList.toggle('hidden');
+  $('#trackInfo').addEventListener('click', e => { if (e.target.closest('[data-act=startvasa]')) { $('#tgtMode').value = 'vasa'; $('#tgtMode').dispatchEvent(new Event('change')); } });
   $('#btnCourseReset').onclick = async () => {
     if (!confirm('Börja om Vasaloppet från start? Tidigare pass räknas inte längre.')) return;
     settings.course = { startedAt: rec ? rec.start : new Date().toISOString() }; saveSettings();
