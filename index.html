@@ -163,27 +163,20 @@ nav.bottom button.active{color:var(--text);border-top-color:var(--accent)}
   main{max-width:1680px;padding:10px 16px calc(50px + env(safe-area-inset-bottom,0px))}
   #btnStopTop:not(.hidden){display:inline-block}
   #view-live #btnStop{display:none!important}
-  #view-live:not(.hidden){display:grid;gap:10px;align-items:stretch;
-    grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);
-    grid-template-areas:"board eff chart" "track zone stats" "track force stats"}
-  /* Rader för välkomstkort och sammanfattning finns bara när de syns, annars stjäl de höjd */
-  #view-live:has(#welcome:not(.hidden)), #view-live:has(#summaryLive:not(:empty)){
-    grid-template-areas:"welcome welcome welcome" "sum sum sum" "board eff chart" "track zone stats" "track force stats"}
-  #view-live > .card, #view-live > .board, #view-live > .stats{margin:0}
-  #welcome{grid-area:welcome} #summaryLive{grid-area:sum} #summaryLive:empty{display:none}
-  #view-live .board{grid-area:board;display:flex;flex-direction:column;justify-content:space-between;padding:10px 18px 12px}
-  #effCard{grid-area:eff} #chartCard{grid-area:chart} #trackCard{grid-area:track} #zoneCard{grid-area:zone} #forceCard{grid-area:force}
-  #view-live .stats{grid-area:stats;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;align-content:stretch}
-  #view-live .stats>div{border-right:1px solid var(--line);padding:6px 10px;display:flex;flex-direction:column;justify-content:center}
-  #view-live .stats>div:nth-child(3n){border-right:0}
-  #view-live .stats .v{font-size:min(3.2vh,26px)}
+  #liveGrid{display:grid;gap:10px;align-items:stretch;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr)}
+  #liveGrid.mode-dist{grid-template-areas:"board int chart" "track eff tech"}
+  #liveGrid.mode-iv{grid-template-areas:"board int iv" "tech chart iv"}
+  #liveGrid > .card, #liveGrid > .board{margin:0}
+  #liveGrid .board{grid-area:board;display:flex;flex-direction:column;justify-content:space-between;padding:10px 18px 12px}
+  #intCard{grid-area:int} #ivCard{grid-area:iv} #techCard{grid-area:tech} #chartCard{grid-area:chart} #trackCard{grid-area:track} #effCard{grid-area:eff}
+  #liveTop > .card{margin-bottom:10px}
   #view-live .card{padding:10px 14px}
   #view-live h3{font-size:15px;margin-bottom:4px}
   .pace-main .v{font-size:min(11vh,150px)}
   .trio .v{font-size:min(6vh,72px)}
   .elapsed{font-size:min(4vh,30px)}
   #chartLive{height:max(15vh,110px)}
-  #chartForce{height:max(7vh,64px)}
+  #chartForce{height:max(7.5vh,60px)}
   .track svg{max-height:13vh}
   .tinfo .v{font-size:min(3.2vh,26px)}
   #effCard .effwrap{flex-wrap:nowrap;gap:12px}
@@ -215,7 +208,7 @@ details.card summary{cursor:pointer;list-style:revert}
 .chk{display:inline-flex;align-items:center;gap:8px;margin:0;font-weight:500}
 .chk input{width:auto}
 @media (max-width:800px){ .wxgrid{grid-template-columns:1fr 1fr} }
-#view-world:has(#wxPanel:not(.hidden)) #worldStage{height:calc(100vh - 380px)}
+#view-world:has(#wxPanel:not(.hidden)) #worldStage{height:calc(100vh - 420px)}
 #worldStage{position:relative;height:calc(100vh - 230px);min-height:340px;border-radius:12px;overflow:hidden;background:#bfd4e6}
 #worldStage:fullscreen{height:100vh;border-radius:0}
 #worldCanvasWrap,#worldCanvasWrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -235,6 +228,39 @@ details.card summary{cursor:pointer;list-style:revert}
 .worldmsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(10,20,28,.78);color:#fff;padding:14px 18px;border-radius:12px;max-width:min(90%,460px);text-align:center;font-size:15px;line-height:1.45}
 #worldStage:fullscreen .hud .v{font-size:44px}
 @media (max-width:700px){ .hud .v{font-size:22px} .hud-bl{grid-template-columns:repeat(2,auto)} #worldStage{height:calc(100vh - 300px)} }
+.planhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.planhead h3{margin:0}
+.plangrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0 12px}
+.plangrid label{margin-top:8px}
+@media (max-width:900px){ .plangrid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.pace-main.pw .v{color:#FFA394}
+.trio .p .v{color:#8EC1FF}
+.pwtgt{margin-left:auto;align-self:center;font-size:14px;color:var(--board-muted);font-weight:600;text-align:right;line-height:1.3}
+.board-sub{display:flex;flex-wrap:wrap;gap:2px 16px;font-size:13px;color:var(--board-muted);margin-top:8px}
+.board-sub b{color:var(--board-ink);font-family:var(--num);font-size:16px;font-weight:600;margin-left:4px}
+.tb{position:relative;height:10px;background:rgba(255,255,255,.13);border-radius:5px;margin:8px 0 2px}
+.tb-ok{position:absolute;top:0;bottom:0;background:rgba(123,224,166,.55);border-radius:5px}
+.tb-mk{position:absolute;top:-4px;width:5px;height:18px;margin-left:-2px;border-radius:2px;background:#fff}
+.tb-mk.hi{background:#ff8a7a} .tb-mk.lo{background:#8ec1ff}
+.tb-lbl{display:flex;justify-content:space-between;font-size:11.5px;color:var(--board-muted)}
+.coach{font-size:15.5px;font-weight:600;padding:8px 10px;border-radius:10px;background:var(--surface2);margin:4px 0 8px;line-height:1.35}
+.coach.ok{background:color-mix(in srgb, var(--accent) 20%, var(--surface))}
+.coach.hi{background:color-mix(in srgb, var(--power) 20%, var(--surface))}
+.coach.lo{background:color-mix(in srgb, var(--pace) 18%, var(--surface))}
+.kv3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 12px;margin-top:8px}
+.kv3 .k{font-size:12.5px;color:var(--muted)}
+.kv3 .v{font-family:var(--num);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.kv3 .sub{font-size:12px;color:var(--muted)}
+.zseg.tgt{box-shadow:inset 0 0 0 2px var(--accent)}
+.ivnow{font-family:var(--num);font-size:24px;font-weight:700;margin:0 0 6px}
+.ivtab td,.ivtab th{padding:4px 6px;font-size:13px}
+.ivtab tr.cur td{font-weight:700}
+.warn{color:var(--power);font-weight:600}
+.okc{color:var(--accent);font-weight:600}
+.verdict{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+@media (max-width:700px){ .verdict{grid-template-columns:1fr} }
+.verdict h4{margin:0 0 4px;font-size:14px}
+.verdict ul{margin:0;padding-left:18px;font-size:14px;line-height:1.45}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));background:var(--text);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s;z-index:20;pointer-events:none;max-width:90vw}
 .toast.show{opacity:1}
 </style>
@@ -251,6 +277,7 @@ details.card summary{cursor:pointer;list-style:revert}
 <main>
   <!-- LIVE -->
   <section id="view-live">
+    <div id="liveTop">
     <div id="welcome" class="card">
       <h2>Kom igång</h2>
       <p>Dra några tag så att PM5 vaknar, tryck på <b>Anslut PM5</b> och välj din monitor i listan. Inspelningen startar av sig själv när passet börjar och sparas när det avslutas på PM5.</p>
@@ -260,19 +287,60 @@ details.card summary{cursor:pointer;list-style:revert}
     </div>
 
     <div id="summaryLive"></div>
+    <div class="card" id="planCard">
+      <div class="planhead"><h3>Dagens pass</h3><label class="chk small"><input type="checkbox" id="planSound"> Ljud vid intervallbyten</label></div>
+      <div class="plangrid">
+        <div><label for="planType">Passtyp</label><select id="planType"></select></div>
+        <div class="ivonly"><label for="planN">Intervaller</label><input id="planN" type="number" inputmode="numeric" min="1" max="40"></div>
+        <div class="ivonly"><label for="planWork">Arbete (min:s)</label><input id="planWork" type="text" inputmode="numeric"></div>
+        <div class="ivonly"><label for="planRest">Vila (min:s)</label><input id="planRest" type="text" inputmode="numeric"></div>
+        <div><label for="planWarm">Uppvärmning (min)</label><input id="planWarm" type="number" inputmode="numeric" min="0" max="45"></div>
+        <div class="ivonly"><label for="planW">Målwatt</label><input id="planW" type="number" inputmode="numeric" placeholder="automatiskt"></div>
+      </div>
+      <p class="small" id="planDesc" style="margin:8px 0 0"></p>
+    </div>
+    </div>
 
+    <div id="liveGrid" class="mode-dist">
     <div class="board">
       <div class="board-top">
-        <span id="v-state">Ej ansluten</span>
+        <span id="v-phase">Ej ansluten</span>
         <span id="recBadge" class="rec hidden"><span class="recdot"></span>Spelar in</span>
         <span class="elapsed" id="v-elapsed">0:00.0</span>
       </div>
-      <div class="pace-main"><span class="v" id="v-pace">–</span><span class="u">/500 m</span></div>
+      <div class="pace-main pw"><span class="v" id="v-power">–</span><span class="u">W</span><span class="pwtgt" id="v-ptgt"></span></div>
+      <div id="v-tband"></div>
       <div class="trio">
-        <div class="w"><div class="k">Watt</div><div class="v" id="v-power">–</div></div>
-        <div class="s"><div class="k">Takt</div><div class="v" id="v-spm">–</div></div>
+        <div class="p"><div class="k">Tempo /500 m</div><div class="v" id="v-pace">–</div></div>
         <div class="h"><div class="k">Puls</div><div class="v" id="v-hr">–</div></div>
+        <div class="s"><div class="k">Takt</div><div class="v" id="v-spm">–</div></div>
       </div>
+      <div class="board-sub" id="v-sub"></div>
+    </div>
+
+    <div class="card" id="intCard">
+      <h3>Intensitet <span class="muted small" style="font-weight:500">Olympiatoppens I-skala</span></h3>
+      <div class="coach" id="v-coach">Välj passtyp och starta passet.</div>
+      <div id="zoneLive"></div>
+      <div class="kv3" id="v-intstats"></div>
+    </div>
+
+    <div class="card hidden" id="ivCard">
+      <h3>Intervaller</h3>
+      <div id="ivLive"></div>
+    </div>
+
+    <div class="card" id="techCard">
+      <h3>Teknik <span class="muted small" style="font-weight:500">mot din baslinje i passet</span></h3>
+      <div id="techLive"></div>
+      <canvas id="chartForce" class="chart short"></canvas>
+      <div class="legend"><span><i style="background:var(--pace)"></i>Senaste draget</span><span><i style="background:var(--muted)"></i>Baslinjen</span></div>
+    </div>
+
+    <div class="card" id="chartCard">
+      <h3 id="chartTitle">Hela passet</h3>
+      <canvas id="chartLive" class="chart"></canvas>
+      <div class="legend"><span><i style="background:var(--power)"></i>Watt, 10 s</span><span><i style="background:var(--hr)"></i>Puls</span><span><i style="background:var(--accent);opacity:.5"></i>Målband</span></div>
     </div>
 
     <div class="card" id="trackCard">
@@ -296,11 +364,6 @@ details.card summary{cursor:pointer;list-style:revert}
       </div>
     </div>
 
-    <div class="card" id="zoneCard">
-      <h3>Pulszon <span class="muted small" style="font-weight:500">Olympiatoppens I-skala</span></h3>
-      <div id="zoneLive"></div>
-    </div>
-
     <div class="card" id="effCard">
       <h3>Meter per pulsslag mot din historik</h3>
       <div class="effwrap">
@@ -314,27 +377,6 @@ details.card summary{cursor:pointer;list-style:revert}
       </div>
     </div>
 
-    <div class="stats">
-      <div><div class="k">Distans</div><div class="v"><span id="v-dist">–</span><span class="u">m</span></div></div>
-      <div><div class="k">Snittempo</div><div class="v" id="v-avgpace">–</div></div>
-      <div><div class="k">Snittwatt</div><div class="v"><span id="v-avgpower">–</span><span class="u">W</span></div></div>
-      <div><div class="k">Kalorier</div><div class="v" id="v-cal">–</div></div>
-      <div><div class="k">Antal drag</div><div class="v" id="v-strokes">–</div></div>
-      <div><div class="k">Arbete per drag</div><div class="v"><span id="v-work">–</span><span class="u">J</span></div></div>
-      <div><div class="k">Meter per drag</div><div class="v" id="v-dps">–</div></div>
-      <div><div class="k">Toppkraft</div><div class="v"><span id="v-peak">–</span><span class="u">lbf</span></div></div>
-      <div><div class="k">Drag : återhämtning</div><div class="v" id="v-ratio">–</div></div>
-      <div><div class="k">Dragfaktor</div><div class="v" id="v-drag">–</div></div>
-    </div>
-
-    <div class="card" id="chartCard">
-      <h3>Senaste tre minuterna</h3>
-      <canvas id="chartLive" class="chart"></canvas>
-      <div class="legend"><span><i style="background:var(--power)"></i>Watt</span><span><i style="background:var(--hr)"></i>Puls</span></div>
-    </div>
-    <div class="card" id="forceCard">
-      <h3>Kraftkurva, senaste draget</h3>
-      <canvas id="chartForce" class="chart short"></canvas>
     </div>
     <button class="btn danger hidden" id="btnStop">Avsluta och spara passet</button>
   </section>
@@ -368,6 +410,8 @@ details.card summary{cursor:pointer;list-style:revert}
       </div>
       <div class="btnrow" style="align-items:center">
         <button class="btn" id="btnWxRandom">Slumpa dagens förhållanden</button>
+        <label class="chk"><input type="checkbox" id="wxEnabled"> Använd väder och före</label>
+        <label class="chk"><input type="checkbox" id="wxDynamic"> Växlande väder under passet</label>
         <label class="chk"><input type="checkbox" id="wxSunBonus"> Solbonus +3 % (spelinslag, inte fysik)</label>
       </div>
       <p class="small" id="wxProg" style="margin:10px 0 0"></p>
@@ -386,7 +430,7 @@ details.card summary{cursor:pointer;list-style:revert}
   <!-- NÖRD -->
   <section id="view-nerd" class="hidden">
     <div class="card nerdhead">
-      <div><h2>Nörd</h2><p class="muted small">Draget, effekten, pulsen och belastningen på djupet.</p></div>
+      <div><h2>Utvärdering av pass</h2><p class="muted small">Blev passet det som var planerat, och vad säger det om formen och tekniken?</p></div>
       <div class="nerdsel"><label for="nerdPass">Pass</label><select id="nerdPass"></select></div>
     </div>
     <div id="nerdBody" class="nerdgrid"></div>
@@ -464,8 +508,8 @@ details.card summary{cursor:pointer;list-style:revert}
 </main>
 
 <nav class="bottom">
-  <button data-view="live" class="active">Bas</button>
-  <button data-view="nerd">Nörd</button>
+  <button data-view="live" class="active">Livedata</button>
+  <button data-view="nerd">Utvärdering</button>
   <button data-view="world">Värld</button>
   <button data-view="history">Historik</button>
   <button data-view="settings">Inställningar</button>
@@ -563,7 +607,8 @@ function smooth(a, k){
 const DEFAULTS = { rate:2, maxHr:'', about:'', effBand:3, target:{ mode:'auto', dist:5000, time:30 }, course:null,
   restHr:'', sex:'m', loadSrc:'trimp', cp:'', wprime:'', refW:'',
   weight:'', worldRefW:'', world:{ course:'ovningsbanan', start:'start', pos:{} },
-  weather:{ sky:'sol', fore:'perfekt', temp:-6, sunBonus:true, goal:'' } };
+  weather:{ sky:'sol', fore:'perfekt', temp:-6, sunBonus:true, goal:'', enabled:true, dynamic:false },
+  plan:{ type:'distans', n:5, work:'6:00', rest:'1:00', warm:10, targetW:'', sound:true } };
 let settings = (() => { try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('skierg.settings') || '{}') }; } catch(e) { return { ...DEFAULTS }; } })();
 // Rensa bort API-nyckel från tidigare version
 if ('apiKey' in settings || 'model' in settings) { delete settings.apiKey; delete settings.model; try { localStorage.setItem('skierg.settings', JSON.stringify(settings)); } catch(e) {} }
@@ -695,6 +740,7 @@ function startSession(){
     samples:[], strokes:[], splits:[], curves:[], pm:{}, note:'',
     lastElapsed: live.elapsed, lastChange: Date.now(), lastSampleT: -1 };
   rec.target = activeTarget(); lastCp = null; ghost = null; loadGhost(); nerdSelWanted = null; worldBegin();
+  rec.plan = buildPlan(); rec.phases = []; rec.nextDrink = 1200; techBase = null;
   $('#summaryLive').innerHTML = '';
   logMsg('Pass startat'); toast('Passet har startat, spelar in');
   updateRecUI();
@@ -734,6 +780,7 @@ async function finalize(reason){
   updateRecUI();
   if (s.samples.length < 15) { try { await DB.del(s.id); } catch(e) {} toast('Passet var för kort för att sparas'); return; }
   s.end = new Date().toISOString(); s.endReason = reason;
+  if (s.phases && s.phases.length) { const L = s.phases[s.phases.length-1]; if (L.t1 == null) L.t1 = s.samples[s.samples.length-1].t; }
   worldEnd(s);
   if (s.source !== 'demo' && live.machine != null) s.machine = machineName(live.machine);
   s.summary = computeSummary(s);
@@ -845,6 +892,7 @@ function sessionEff(s, sessions){
   return { index: ratios.length >= 3 ? mean(ratios)*100 : null, compared: ratios.length, refMinutes: refs.length };
 }
 async function rebuildRefs(){
+  rebuildHRM();
   try { const all = await DB.all(); effRefs = { pm5: refsFrom(all, 'pm5'), demo: refsFrom(all, 'demo') }; } catch(e) {}
   await rebuildCourse();
 }
@@ -1017,9 +1065,11 @@ function drawChart(canvas, series, opt={}){
     if (!ys.length) return;
     let ymin = s.min != null ? s.min : Math.min(...ys), ymax = s.max != null ? s.max : Math.max(...ys);
     if (ymax - ymin < 1e-9) { ymax += 1; ymin -= 1; }
+    if (opt.band && opt.band.series === si) { ymin = Math.min(ymin, opt.band.lo); ymax = Math.max(ymax, opt.band.hi); }
     const py = (ymax-ymin)*0.08; if (s.min == null) ymin -= py; if (s.max == null) ymax += py;
     const X = x => padL + (x-xmin)/(xmax-xmin)*pw;
     const Y = y => { let f = (y-ymin)/(ymax-ymin); if (s.invert) f = 1-f; return padT + ph*(1-f); };
+    if (opt.band && opt.band.series === si) { ctx.fillStyle = opt.band.color || s.color; ctx.globalAlpha = 0.16; const y1 = Y(opt.band.hi), y2 = Y(opt.band.lo); ctx.fillRect(padL, Math.min(y1, y2), pw, Math.abs(y2 - y1)); ctx.globalAlpha = 1; }
     ctx.strokeStyle = s.color; ctx.lineWidth = s.width || 2; ctx.lineJoin = 'round'; ctx.setLineDash(s.dash || []);
     ctx.beginPath(); let pen = false;
     s.pts.forEach(p => { if (p[1]==null || !isFinite(p[1])) { pen = false; return; } const x = X(p[0]), y = Y(p[1]); if (!pen) { ctx.moveTo(x,y); pen = true; } else ctx.lineTo(x,y); });
@@ -1043,16 +1093,32 @@ function drawChart(canvas, series, opt={}){
   ctx.textAlign = 'left';
 }
 function drawLiveChart(){
-  const now = Date.now()/1000;
+  if (!rec) {
+    $('#chartTitle').textContent = 'Senaste tre minuterna';
+    const now = Date.now()/1000;
+    drawChart($('#chartLive'), [
+      { pts: liveBuf.map(x => [x.t-now, x.p || null]), color: cssVar('--power') },
+      { pts: liveBuf.map(x => [x.t-now, x.hr || null]), color: cssVar('--hr') }
+    ], { xmin:-180, xmax:0, xfmt: v => v >= 0 ? 'nu' : `−${Math.round(-v/60)} min`, empty:'Väntar på data' });
+    return;
+  }
+  $('#chartTitle').textContent = 'Hela passet';
+  const sm = rec.samples, step = Math.max(1, Math.ceil(sm.length/320)), pts = [];
+  const ps = smooth(sm.map(x => x.p || null), 9);
+  for (let i = 0; i < sm.length; i += step) pts.push([sm[i].t/60, ps[i], sm[i].hr || null]);
+  const pl = rec.plan, ty = PASS_TYPES[pl.type] || {}, useP = ty.control === 'power' && pl.pBand;
+  const band = ty.control === 'none' ? null : useP ? { series:0, lo:pl.pBand[0], hi:pl.pBand[1], color:cssVar('--accent') } : pl.hrBand ? { series:1, lo:pl.hrBand[0], hi:pl.hrBand[1], color:cssVar('--accent') } : null;
   drawChart($('#chartLive'), [
-    { pts: liveBuf.map(x => [x.t-now, x.p || null]), color: cssVar('--power') },
-    { pts: liveBuf.map(x => [x.t-now, x.hr || null]), color: cssVar('--hr') }
-  ], { xmin:-180, xmax:0, xfmt: v => v >= 0 ? 'nu' : `−${Math.round(-v/60)} min`, empty:'Väntar på data' });
+    { pts: pts.map(p => [p[0], p[1]]), color: cssVar('--power') },
+    { pts: pts.map(p => [p[0], p[2]]), color: cssVar('--hr') }
+  ], { xfmt: v => `${Math.round(v)} min`, band, empty:'Väntar på data' });
 }
 function drawForce(){
-  const c = live.curve;
-  drawChart($('#chartForce'), c ? [{ pts: c.map((v,i)=>[i/(c.length-1), v]), color: cssVar('--pace'), min:0, width:3 }] : [],
-    { xfmt: v => v === 0 ? 'dragets start' : 'slut', empty:'Kurvan visas efter första draget' });
+  const c = live.curve, base = techBase && techBase.curve;
+  const mx = Math.max(1, ...(c || [0]), ...(base || [0]))*1.08, S = [];
+  if (base) S.push({ pts: base.map((v, i) => [i/(base.length-1), v]), color: cssVar('--muted'), min:0, max:mx, width:2, dash:[5,4], label:false });
+  if (c) S.unshift({ pts: c.map((v, i) => [i/(c.length-1), v]), color: cssVar('--pace'), min:0, max:mx, width:3 });
+  drawChart($('#chartForce'), S, { xfmt: v => v === 0 ? 'dragets start' : 'slut', empty:'Kurvan visas efter första draget' });
 }
 
 /* ============================================================ Mål, spökåkare och Vasaloppet */
@@ -1281,7 +1347,8 @@ function renderZoneLive(){
   const el = $('#zoneLive'), mx = maxHr();
   if (!mx) { el.innerHTML = '<p class="muted small">Ange din maxpuls under Inställningar för att se pulszoner.</p>'; return; }
   const hr = getHr(), k = zoneOf(hr, mx), zt = rec ? zoneTimes(rec.samples, mx) : null;
-  el.innerHTML = `<div class="zbar">${ZONES.map((z, i) => `<div class="zseg${i === k ? ' on' : ''}"><div class="zl">${z[0]}</div><div class="zt">${zt ? fmtClock(zt.z[i]) : zoneRange(z)}</div></div>`).join('')}</div>
+  const tz = (PASS_TYPES[planNow().type] || {}).zone;
+  el.innerHTML = `<div class="zbar">${ZONES.map((z, i) => `<div class="zseg${i === k ? ' on' : ''}${tz && i >= tz[0] && i <= tz[1] ? ' tgt' : ''}"><div class="zl">${z[0]}</div><div class="zt">${zt ? fmtClock(zt.z[i]) : zoneRange(z)}</div></div>`).join('')}</div>
     <p class="muted small" style="margin-top:6px">${hr ? `${hr} slag, ${Math.round(hr/mx*100)} % av maxpuls${k === -1 ? ', under I1' : ''}.` : 'Ingen puls.'} ${zt ? 'Tid i varje zon under passet.' : 'Procent av maxpuls per zon.'}</p>`;
 }
 const RPE_TEXT = ['', 'Mycket, mycket lätt', 'Lätt', 'Måttlig', 'Något ansträngande', 'Ansträngande', 'Ansträngande', 'Mycket ansträngande', 'Mycket ansträngande', 'Mycket, mycket ansträngande', 'Maximal'];
@@ -1798,7 +1865,7 @@ function strokeCardHTML(n){
     <canvas class="chart" data-n="curves"></canvas>
     <div class="legend">${n.isLive ? '<span><i style="background:var(--muted)"></i>Senaste 20 dragen</span><span><i style="background:var(--pace)"></i>Medel ±1 SD</span>' : '<span><i style="background:var(--pace)"></i>Första tredjedelen, ±1 SD</span><span><i style="background:var(--power)"></i>Sista tredjedelen, ±1 SD</span>'}</div>
     <canvas class="chart short" data-n="form" style="margin-top:10px"></canvas>
-    <div class="legend"><span><i style="background:var(--accent)"></i>Fyllnadsgrad per minut</span><span><i style="background:var(--spm)"></i>Toppens läge per minut</span></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Fyllnadsgrad per minut, %</span><span><i style="background:var(--spm)"></i>Toppens läge per minut, %</span></div>
     <p class="ndesc">Fyllnadsgraden visar hur jämnt du trycker genom draget. Formvariationen är spridningen mellan dragens kurvor. Ett smalt band betyder repeterbar teknik, och bandet brukar vidgas innan effekten faller.</p></div>`;
 }
 function rateCardHTML(n){
@@ -1869,8 +1936,8 @@ function drawNerd(n, all){
       : { bands:[n.bandEarly && { ...n.bandEarly, color:cssVar('--pace') }, n.bandLate && { ...n.bandLate, color:cssVar('--power') }] });
     const bm = n.byMin || [];
     drawChart(q('form'), [
-      { pts: bm.map(x => [x.min, x.fill*100]), color:cssVar('--accent'), fmt: v => `${fmtNum1(v)} %` },
-      { pts: bm.map(x => [x.min, x.pos*100]), color:cssVar('--spm'), fmt: v => `${fmtNum1(v)} %` }
+      { pts: bm.map(x => [x.min, x.fill*100]), color:cssVar('--accent'), fmt: v => fmtNum1(v) },
+      { pts: bm.map(x => [x.min, x.pos*100]), color:cssVar('--spm'), fmt: v => fmtNum1(v) }
     ], { xfmt: xm, empty:'Behöver några minuter med kraftkurvor' });
   }
   const rw = n.rows.length > 1500 ? n.rows.slice(-1500) : n.rows, t0 = rw.length ? rw[0].t : 0, t1 = rw.length ? rw[rw.length-1].t : 1;
@@ -1910,7 +1977,10 @@ async function renderNerd(force){
     const sel = $('#nerdPass').value, s = sel === 'live' && rec ? rec : all.find(x => x.id === sel) || null, body = $('#nerdBody');
     if (!s) { body.innerHTML = '<div class="card wide"><h3>Inga pass än</h3><p class="muted">Kör ett pass eller ett demopass, så fylls fliken med analyser.</p></div>' + loadCardHTML(all); return; }
     const n = nerdCalc(s, all);
-    body.innerHTML = strokeCardHTML(n) + rateCardHTML(n) + rhythmCardHTML(n) + powerCardHTML(n, all) + hrCardHTML(n) + loadCardHTML(all);
+    const e = evalCalc(s, all, n);
+    body.innerHTML = coachCardHTML(s, n, e) + ivEvalHTML(s, e) + strokeCardHTML(n) + rateCardHTML(n) + intensityCardHTML(s, n, all) + hrCardHTML(n) + loadCardHTML(all);
+    const b2 = body.querySelector('[data-act=usecp2]');
+    if (b2 && e.cp2) b2.onclick = () => { settings.cp = String(e.cp2.cp); settings.wprime = e.cp2.wp.toFixed(1); saveSettings(); $('#setCp').value = settings.cp; $('#setWp').value = settings.wprime; toast('CP och W′ från testerna är sparade'); renderNerd(true); };
     const b = body.querySelector('[data-act=usecp]');
     if (b && n.cpEst && !n.cpEst.bad) b.onclick = () => {
       settings.cp = String(n.cpEst.cp); settings.wprime = n.cpEst.wp.toFixed(1); saveSettings();
@@ -2078,6 +2148,7 @@ setInterval(() => {
   const now = performance.now(), dt = Math.min(0.25, (now - (W.lastTick || now))/1000); W.lastTick = now;
   // Demopasset går i fyrfaldig hastighet, världen följer med
   if (rec && W.course) worldStep(dt*(connState === 'demo' ? 4 : 1));
+  if (rec && WX.state) wxTick((live.elapsed || 0)/60);
 }, 50);
 function worldStartPos(c){ return settings.world.start === 'resume' ? Math.min(c.len - 50, Math.max(0, (settings.world.pos || {})[c.id] || 0)) : 0; }
 function worldReset(){
@@ -2091,7 +2162,8 @@ async function worldBegin(){
   try { const all = (await DB.all()).filter(x => x.summary && x.source !== 'demo' && x.summary.avgPower > 0).sort((a, b) => b.start.localeCompare(a.start)).slice(0, 5); if (all.length) W.autoRef = Math.round(mean(all.map(x => x.summary.avgPower))); } catch(e) {}
   worldCalibrate();
   if (!rec) return;
-  rec.world = { course:c.id, name:c.name, s0:r1(W.s0), pts:[], mu:+W.mu.toFixed(4), mass:worldMass(), wx:{ ...settings.weather } };
+  if (settings.weather.dynamic && settings.weather.enabled !== false) wxStart(); else WX.state = null;
+  rec.world = { course:c.id, name:c.name, s0:r1(W.s0), pts:[], mu:+W.mu.toFixed(4), mass:worldMass(), wx:{ ...wxNow() }, wxLog: WX.state ? WX.log : null };
   worldLoadGhost();
   $('#worldCourse').disabled = true; $('#worldStart').disabled = true;
 }
@@ -2110,6 +2182,7 @@ async function worldLoadGhost(){
   if (best) W.ghost = { date:best.start, t:best.world.pts.map(p => p[0]), s:best.world.pts.map(p => p[1]), finishT:best.world.finishT };
 }
 function worldEnd(s){
+  WX.state = null;
   $('#worldCourse').disabled = false; $('#worldStart').disabled = false;
   if (!s.world || !W.course || W.course.id !== s.world.course) return;
   const c = W.course, w = s.world;
@@ -2199,10 +2272,10 @@ function buildChunk(c, k){
   group.add(new THREE.Mesh(grid(pos, cols, offs.slice(0, -1).map((_, q) => [q, q + 1])), T.M.snow));
   group.add(new THREE.Mesh(grid(tpos, 2, [[0, 1]]), T.M.track));
   group.add(new THREE.Mesh(grid(gpos, 4, [[0, 1], [2, 3]]), T.M.groove));
-  const rnd = mulberry(k*9973 + 17), n = rows*4, dummy = new THREE.Object3D();
+  const rnd = mulberry(k*9973 + 17), n = Math.round(rows*2.2), dummy = new THREE.Object3D();
   const cones = [new THREE.InstancedMesh(T.geo.cone, T.M.spruce, n), new THREE.InstancedMesh(T.geo.cone, T.M.spruce2, n)], trunks = new THREE.InstancedMesh(T.geo.trunk, T.M.trunk, n);
   for (let j = 0; j < n; j++) {
-    const [p, nx, nz] = frame[Math.floor(rnd()*rows)], off = (rnd() < 0.5 ? -1 : 1)*(9 + rnd()*62);
+    const [p, nx, nz] = frame[Math.floor(rnd()*rows)], off = (rnd() < 0.5 ? -1 : 1)*(17 + rnd()*56);
     const x = p[0] + nx*off + (rnd() - 0.5)*8, z = p[2] + nz*off + (rnd() - 0.5)*8, y = groundY(p[1], x, z, off), h = 7 + rnd()*12;
     dummy.position.set(x, y + 1.2, z); dummy.scale.set(h*0.27, h, h*0.27); dummy.rotation.y = rnd()*6.28; dummy.updateMatrix();
     cones[j % 2].setMatrixAt(j, dummy.matrix);
@@ -2286,7 +2359,7 @@ function placeSkier(sk, c, sd){
 // Friktionsfaktorer relativt grundfriktionen, som är kalibrerad mot PM5 i perfekt före.
 // Ungefärliga värden inom det kända spannet μ ≈ 0,02 (isigt) till över 0,1 (blöt nysnö).
 const FORE = {
-  perfekt:   { n:'Perfekt kallt spår, runt −5°', mu:1.00, snow:0xf1f5f8, track:0xc9d5e0, groove:0x8a9eb2 },
+  perfekt:   { n:'Perfekt kallt spår, runt −5°', mu:1.00, snow:0xf1f5f8, track:0xbccad7, groove:0x8a9eb2 },
   skare:     { n:'Isigt efter tö och frost',     mu:0.65, snow:0xe8eef4, track:0xb6d0ea, groove:0x7f9cbc },
   hardpack:  { n:'Hårt och kallt, under −10°',   mu:1.12, snow:0xf3f6f9, track:0xd2dce6, groove:0x93a6b8 },
   kyla:      { n:'Sträng kyla, under −18°',      mu:1.35, snow:0xf6f8fb, track:0xdbe3ea, groove:0x9fb0c0 },
@@ -2310,10 +2383,12 @@ const WX_COMBOS = [
 // Luftens densitet ur temperaturen: ρ = p/(R·T) vid normalt lufttryck
 const airRho = tC => 101325/(287.05*(273.15 + tC));
 function worldCond(minutes){
-  const w = settings.weather || {}, f = FORE[w.fore] || FORE.perfekt, sk = SKY[w.sky] || SKY.sol;
-  // Snöfall lägger nysnö i spåret: friktionen ökar gradvis under passet, högst 40 %
-  const acc = sk.acc ? Math.min(0.4, sk.acc*Math.max(0, minutes)) : 0;
-  return { muMul: f.mu*(1 + acc), acc, rho: airRho(Number(w.temp) || 0), powMul: w.sky === 'sol' && w.sunBonus ? 1.03 : 1 };
+  const w = wxNow();
+  if (w.off) return { muMul:1, acc:0, rho:airRho(-5), powMul:1, off:true };
+  const f = FORE[w.fore] || FORE.perfekt, sk = SKY[w.sky] || SKY.sol;
+  // Snöfall lägger nysnö i spåret: friktionen ökar gradvis, högst 40 %. Med växlande väder packas den nya snön sakta ned igen.
+  const acc = settings.weather.dynamic && rec && WX.state ? WX.accum : sk.acc ? Math.min(0.4, sk.acc*Math.max(0, minutes)) : 0;
+  return { muMul: f.mu*(1 + acc), acc, rho: airRho(Number(w.temp) || 0), powMul: w.sky === 'sol' && settings.weather.sunBonus ? 1.03 : 1 };
 }
 // Kvasistatisk prognos: farten löses ur effektbalansen för varje 10-metersbit, utan tröghet
 function courseTime(c, P, cond){
@@ -2335,7 +2410,7 @@ function wxPrognosis(){
   worldCalibrate();
   const ref = Math.round(worldRefW()), cond = worldCond(0), base = { muMul:1, acc:0, rho:airRho(-5), powMul:1 };
   const t = courseTime(c, ref, cond), t0 = courseTime(c, ref, base);
-  let txt = `Hela ${esc(c.name)} (${fmtKm(c.len)} km) vid ${ref} W tar ungefär <b>${fmtClock(t)}</b> i det här föret, mot ${fmtClock(t0)} i perfekt före.`;
+  let txt = cond.off ? `Hela ${esc(c.name)} (${fmtKm(c.len)} km) vid ${ref} W tar ungefär <b>${fmtClock(t)}</b>. Väder och före är avstängt.` : `Hela ${esc(c.name)} (${fmtKm(c.len)} km) vid ${ref} W tar ungefär <b>${fmtClock(t)}</b> i det här föret, mot ${fmtClock(t0)} i perfekt före.`;
   const goal = parseHM(settings.weather.goal);
   if (goal) {
     let lo = 20, hi = 900;
@@ -2344,20 +2419,29 @@ function wxPrognosis(){
     else { for (let k = 0; k < 20; k++) { const P = (lo + hi)/2; if (courseTime(c, P, cond) > goal) lo = P; else hi = P; } txt += ` Måltiden ${esc(settings.weather.goal)} kräver ungefär <b>${Math.round(hi)} W</b> i snitt.`; }
   }
   const sk = SKY[settings.weather.sky];
-  if (sk.acc) txt += ` Snöfallet gör spåret trögare under passet, ungefär +${Math.round(sk.acc*3000)} % friktion efter en halvtimme, vilket inte ingår i prognosen.`;
+  if (sk.acc && !cond.off) txt += ` Snöfallet gör spåret trögare under passet, ungefär +${Math.round(sk.acc*3000)} % friktion efter en halvtimme, vilket inte ingår i prognosen.`;
   el.innerHTML = txt + ' <span class="muted">Prognosen räknar med jämn effekt och bortser från farten du bär genom svackor.</span>';
 }
 // Himmel, ljus, markfärger och nederbörd sätts om bara när vädret eller föret ändras
-function applyWeather(){
-  const w = settings.weather, key = `${w.sky}|${w.fore}`;
-  if (!T || T.wxKey === key) return;
-  T.wxKey = key;
-  const sk = SKY[w.sky] || SKY.sol, f = FORE[w.fore] || FORE.perfekt;
-  T.scene.background.setHex(sk.bg); T.scene.fog.color.setHex(sk.fog); T.scene.fog.near = sk.near; T.scene.fog.far = sk.far;
-  T.hemi.intensity = sk.hemi; T.sun.intensity = sk.sun; T.sun.color.setHex(sk.sunC);
-  T.M.snow.color.setHex(f.snow); T.M.track.color.setHex(f.track); T.M.groove.color.setHex(f.groove);
-  if (T.precip) { T.scene.remove(T.precip.obj); T.precip.obj.geometry.dispose(); T.precip.obj.material.dispose(); T.precip = null; }
-  if (sk.snow || sk.rain) T.precip = makePrecip(sk.snow ? 'snow' : 'rain', sk.snow || sk.rain);
+// Vädret glider över till nya värden med ungefär sex sekunders tidskonstant, så att skiften känns naturliga
+function applyWeather(dt){
+  if (!T) return;
+  const w = wxNow(), sk = SKY[w.sky] || SKY.sol, f = FORE[w.fore] || FORE.perfekt, key = `${w.sky}|${w.fore}`;
+  const first = T.wxKey == null;
+  if (T.wxKey !== key) {
+    T.wxKey = key;
+    const C = h => new THREE.Color(h);
+    T.wxT = { bg:C(sk.bg), fog:C(sk.fog), near:sk.near, far:sk.far, hemi:sk.hemi, sun:sk.sun, sunC:C(sk.sunC), snow:C(f.snow), track:C(f.track), groove:C(f.groove) };
+    const kind = sk.snow ? 'snow' : sk.rain ? 'rain' : null, cnt = sk.snow || sk.rain || 0;
+    if (T.precip && (T.precip.kind !== kind || T.precip.n !== cnt)) { T.scene.remove(T.precip.obj); T.precip.obj.geometry.dispose(); T.precip.obj.material.dispose(); T.precip = null; }
+    if (kind && !T.precip) { T.precip = makePrecip(kind, cnt); if (!first) T.precip.obj.material.opacity = 0; }
+  }
+  const t = T.wxT, k = first ? 1 : 1 - Math.exp(-(dt || 0)/6);
+  T.scene.background.lerp(t.bg, k); T.scene.fog.color.lerp(t.fog, k);
+  T.scene.fog.near += (t.near - T.scene.fog.near)*k; T.scene.fog.far += (t.far - T.scene.fog.far)*k;
+  T.hemi.intensity += (t.hemi - T.hemi.intensity)*k; T.sun.intensity += (t.sun - T.sun.intensity)*k; T.sun.color.lerp(t.sunC, k);
+  T.M.snow.color.lerp(t.snow, k); T.M.track.color.lerp(t.track, k); T.M.groove.color.lerp(t.groove, k);
+  if (T.precip) { const tgt = T.precip.kind === 'rain' ? 0.55 : 0.92, m = T.precip.obj.material; if (m.opacity < tgt) m.opacity = Math.min(tgt, m.opacity + (dt || 0)*0.2); }
 }
 const PRECIP_BOX = { x:32, y:26, z:32 };
 function makePrecip(kind, n){
@@ -2438,7 +2522,7 @@ function worldFrame(now){
     const look = courseAt(c, Math.min(c.len, W.s + (mode === 'bakom' ? 10 : 2)));
     T.camera.lookAt(look.x, look.y + (mode === 'bakom' ? 1.2 : 1.0), look.z);
   }
-  applyWeather(); updatePrecip(dt);
+  applyWeather(dt); updatePrecip(dt);
   T.renderer.render(T.scene, T.camera);
   if (now - T.hudT > 250) { T.hudT = now; renderHUD(); }
 }
@@ -2446,10 +2530,10 @@ function renderHUD(){
   const c = W.course; if (!c) return;
   const gr = courseGrade(c, W.s)*100, hr = getHr(), cps = c.cps || [];
   const next = cps.find(cp => cp[1] > W.s + 1);
-  const wx = settings.weather, cnd = worldCond(rec ? (live.elapsed || 0)/60 : 0);
+  const wx = wxNow(), cnd = worldCond(rec ? (live.elapsed || 0)/60 : 0);
   setHTML($('#hudTL'), `<div class="name">${esc(c.name)}</div><div class="sub">${fmtKm(W.s)} av ${fmtKm(c.len)} km${next ? `, ${fmtKm(next[1] - W.s)} km till ${esc(next[0])}` : ''}</div>
-    <div class="sub">${signedNum(Number(wx.temp) || 0, 0)} °C, ${esc(SKY[wx.sky].n.toLowerCase())}, ${esc(FORE[wx.fore].n.toLowerCase())}</div>
-    <div class="sub">friktion ×${fmt2(cnd.muMul)}${cnd.acc > 0.005 ? `, varav nysnö +${Math.round(cnd.acc*100)} %` : ''}${cnd.powMul > 1 ? ', solbonus +3 %' : ''}</div>`);
+    ${wx.off ? '<div class="sub">väder och före avstängt</div>' : `<div class="sub">${signedNum(Number(wx.temp) || 0, 0)} °C, ${esc(SKY[wx.sky].n.toLowerCase())}, ${esc(FORE[wx.fore].n.toLowerCase())}${settings.weather.dynamic && rec ? ', växlande' : ''}</div>
+    <div class="sub">friktion ×${fmt2(cnd.muMul)}${cnd.acc > 0.005 ? `, varav nysnö +${Math.round(cnd.acc*100)} %` : ''}${cnd.powMul > 1 ? ', solbonus +3 %' : ''}</div>`}`);
   setHTML($('#hudTR'), `<div><div class="k">Fart</div><div class="v">${fmtNum1(W.v*3.6)}<span class="u">km/h</span></div></div><div><div class="k">Lutning</div><div class="v">${signedNum(gr, 1)}<span class="u">%</span></div></div>`);
   const fresh = live.powerAt && Date.now() - live.powerAt < 3000;
   setHTML($('#hudBL'), `<div><div class="k">Watt</div><div class="v">${fresh && live.power ? live.power : '–'}</div></div><div><div class="k">Takt</div><div class="v">${live.spm || '–'}</div></div><div><div class="k">Puls</div><div class="v">${hr || '–'}</div></div><div><div class="k">Tid</div><div class="v">${rec ? fmtClock(live.elapsed) : '–'}</div></div>`);
@@ -2497,14 +2581,17 @@ function worldBind(){
     await DB.courseDel(c.id); worldCourses.delete(c.id); settings.world.course = PRACTICE_ID; saveSettings(); worldFillSelect(); worldReset();
   };
   $('#btnWx').onclick = () => { $('#wxPanel').classList.toggle('hidden'); worldResize(); wxPrognosis(); };
-  $('#wxSky').innerHTML = Object.entries(SKY).map(([k, v]) => `<option value="${k}">${v.n}</option>`).join('');
+  $('#wxSky').innerHTML = Object.entries(SKY).filter(([k]) => k !== 'neutral').map(([k, v]) => `<option value="${k}">${v.n}</option>`).join('');
   $('#wxFore').innerHTML = Object.entries(FORE).map(([k, v]) => `<option value="${k}">${v.n}</option>`).join('');
-  const wxUI = () => { const w = settings.weather; $('#wxSky').value = w.sky; $('#wxFore').value = w.fore; $('#wxTemp').value = w.temp; $('#wxSunBonus').checked = !!w.sunBonus; $('#wxGoal').value = w.goal || ''; };
+  const wxUI = () => { const w = settings.weather; $('#wxSky').value = w.sky; $('#wxFore').value = w.fore; $('#wxTemp').value = w.temp; $('#wxSunBonus').checked = !!w.sunBonus; $('#wxGoal').value = w.goal || '';
+    $('#wxEnabled').checked = w.enabled !== false; $('#wxDynamic').checked = !!w.dynamic;
+    ['#wxSky', '#wxFore', '#wxTemp', '#wxSunBonus', '#wxDynamic', '#btnWxRandom'].forEach(id => { $(id).disabled = w.enabled === false; }); };
   const wxSave = () => {
-    settings.weather = { sky:$('#wxSky').value, fore:$('#wxFore').value, temp:Number($('#wxTemp').value) || 0, sunBonus:$('#wxSunBonus').checked, goal:$('#wxGoal').value.trim() };
+    settings.weather = { sky:$('#wxSky').value, fore:$('#wxFore').value, temp:Number($('#wxTemp').value) || 0, sunBonus:$('#wxSunBonus').checked, goal:$('#wxGoal').value.trim(), enabled:$('#wxEnabled').checked, dynamic:$('#wxDynamic').checked };
+    wxUI();
     saveSettings(); wxPrognosis(); if (rec && rec.world) rec.world.wx = { ...settings.weather };
   };
-  wxUI(); ['#wxSky', '#wxFore', '#wxTemp', '#wxSunBonus', '#wxGoal'].forEach(id => $(id).onchange = wxSave);
+  wxUI(); ['#wxSky', '#wxFore', '#wxTemp', '#wxSunBonus', '#wxGoal', '#wxEnabled', '#wxDynamic'].forEach(id => $(id).onchange = wxSave);
   $('#btnWxRandom').onclick = () => { const p = WX_COMBOS[Math.floor(Math.random()*WX_COMBOS.length)]; Object.assign(settings.weather, p); wxUI(); wxSave(); toast(`Dagens förhållanden: ${SKY[p.sky].n.toLowerCase()}, ${FORE[p.fore].n.toLowerCase()}, ${p.temp} °C`); };
   $('#btnCam').onclick = () => { if (!T) return; T.camMode = (T.camMode + 1) % CAMS.length; T.camPos = null; $('#btnCam').textContent = 'Kamera: ' + CAMS[T.camMode]; };
   $('#btnFull').onclick = () => { const st = $('#worldStage'); if (document.fullscreenElement) document.exitFullscreen(); else if (st.requestFullscreen) st.requestFullscreen().catch(() => toast('Helskärm stöds inte här')); };
@@ -2515,7 +2602,420 @@ function worldHTML(s){
 }
 function worldMd(s){
   const w = s.world; if (!w) return [];
-  return ['', '## Värld', mdTable(['Mått', 'Värde'], [['Bana', w.name], ['Sträcka', `${fmtKm(w.dist)} km, från ${fmtKm(w.s0)} till ${fmtKm(w.s1)} km`], ['Höjdmeter uppför', w.gain], ['Snittfart i världen', w.speed ? `${fmtNum1(w.speed)} km/h` : null], ['Måltid', w.finishT ? fmtTime(w.finishT) : 'ej i mål'], ['Väder och före', w.wx ? `${w.wx.temp} °C, ${SKY[w.wx.sky].n.toLowerCase()}, ${FORE[w.wx.fore].n.toLowerCase()} (friktionsfaktor ${fmt2(FORE[w.wx.fore].mu)})` : null], ['Fysik', `vikt ${w.mass} kg, grundfriktion μ ${String(w.mu).replace('.', ',')}, luftmotstånd CdA 0,5 m²`]])];
+  return ['', '## Värld', mdTable(['Mått', 'Värde'], [['Bana', w.name], ['Sträcka', `${fmtKm(w.dist)} km, från ${fmtKm(w.s0)} till ${fmtKm(w.s1)} km`], ['Höjdmeter uppför', w.gain], ['Snittfart i världen', w.speed ? `${fmtNum1(w.speed)} km/h` : null], ['Måltid', w.finishT ? fmtTime(w.finishT) : 'ej i mål'], ['Väder och före', !w.wx || w.wx.off ? 'avstängt' : `${w.wx.temp} °C, ${(SKY[w.wx.sky] || SKY.sol).n.toLowerCase()}, ${FORE[w.wx.fore].n.toLowerCase()} (friktionsfaktor ${fmt2(FORE[w.wx.fore].mu)})`],
+    ...(w.wxLog && w.wxLog.length > 1 ? [['Väderskiften', w.wxLog.map(x => `${fmtClock(x[0])} ${SKY[x[1]].n.toLowerCase()}, ${FORE[x[2]].n.toLowerCase()}, ${x[3]} °C`).join('; ')]] : []), ['Fysik', `vikt ${w.mass} kg, grundfriktion μ ${String(w.mu).replace('.', ',')}, luftmotstånd CdA 0,5 m²`]])];
+}
+
+/* ============================================================ Passtyp och plan */
+const PASS_TYPES = {
+  distans: { n:'Lugn distans', zone:[0,1], control:'hr', iv:false, warm:5,
+    desc:'Lugnt och länge i I1–I2. Pulsen styr: ligg under taket och låt effekten följa. Det är här grunden byggs, och den vanligaste missen är att det blir för hårt.' },
+  troskel: { n:'Tröskelintervaller', zone:[2,2], control:'power', iv:true, warm:12, def:{ n:5, work:360, rest:60 },
+    desc:'I3, kontrollerat. Effekten styr och pulsen är tak. Avsluta varje intervall med känslan att du hade klarat en till. Går pulsen över taket blir det ett VO2max-pass.' },
+  vo2: { n:'VO2max-intervaller', zone:[3,3], control:'power', iv:true, warm:15, def:{ n:5, work:240, rest:180 },
+    desc:'I4, hårt men jämnt. Sista intervallet ska vara lika starkt som det första. Pulsen når målzonen först i slutet av varje intervall, så styr på effekten.' },
+  fart: { n:'Korta intervaller', zone:[4,4], control:'power', iv:true, warm:15, def:{ n:10, work:30, rest:90 },
+    desc:'I5, fart och kraft i dragen. Full vila mellan, kvaliteten i varje drag är viktigare än pulsen.' },
+  fartlek: { n:'Fartlek', zone:null, control:'none', iv:false, warm:10,
+    desc:'Lek med farten utan fast plan. Utvärderingen hittar dina fartökningar automatiskt.' },
+  teknik: { n:'Teknikpass', zone:[0,0], control:'hr', iv:false, warm:5,
+    desc:'Lugnt i I1 med fokus på långa, fylliga tag. Följ fyllnadsgraden och arbetet per drag i teknikrutan.' },
+  test: { n:'Maxtest', zone:null, control:'none', iv:true, warm:15, def:{ n:1, work:180, rest:0 },
+    desc:'En maximal, jämn insats på 3 eller 12 minuter. Två tester på olika längder ger kritisk effekt och W′.' }
+};
+const parseMS = v => { const m = String(v || '').trim().match(/^(\d+)(?:[:.](\d{1,2}))?$/); return m ? +m[1]*(m[2] != null ? 60 : 60) + (m[2] != null ? +m[2] : 0) : null; };
+const fmtMS = sec => `${Math.floor(sec/60)}:${pad(Math.round(sec%60))}`;
+let HRM = null;
+async function rebuildHRM(){
+  try {
+    const all = (await DB.all()).filter(x => x.summary && !x.draft && x.source !== 'demo').sort((a, b) => a.start.localeCompare(b.start));
+    const m = hrModel(all), last = m.rows && m.rows[m.rows.length - 1];
+    HRM = last && m.b > 0 ? { ref:m.ref, est:last.est, b:m.b } : null;
+  } catch(e) { HRM = null; }
+}
+// Effekten som enligt din puls–effektmodell motsvarar en viss puls
+const powerAtHR = hr => HRM ? Math.max(40, Math.round(HRM.ref + (hr - HRM.est)/HRM.b)) : null;
+function buildPlan(){
+  const p = settings.plan || {}, ty = PASS_TYPES[p.type] || PASS_TYPES.distans;
+  const pl = { type: PASS_TYPES[p.type] ? p.type : 'distans', warm: Math.max(0, Number(p.warm) || 0)*60, sound: p.sound !== false };
+  if (ty.iv) { pl.n = Math.max(1, Number(p.n) || ty.def.n); pl.work = parseMS(p.work) || ty.def.work; pl.rest = parseMS(p.rest) ?? ty.def.rest; if (pl.type === 'test') { pl.n = 1; pl.rest = 0; } }
+  const mx = maxHr();
+  pl.hrBand = ty.zone && mx ? [Math.round(ZONES[ty.zone[0]][1]/100*mx), Math.round(Math.min(100, ZONES[ty.zone[1]][2])/100*mx)] : null;
+  const tw = Number(p.targetW);
+  if (ty.iv && tw > 0) { pl.pBand = [Math.round(tw*0.97), Math.round(tw*1.03)]; pl.pSrc = 'manual'; }
+  else if (pl.hrBand && HRM) { pl.pBand = [powerAtHR(pl.hrBand[0]), powerAtHR(pl.hrBand[1])]; pl.pSrc = 'model'; }
+  return pl;
+}
+function planNow(){ return rec && rec.plan ? rec.plan : buildPlan(); }
+// Var i passet du är: uppvärmning, arbete, vila eller nedvarvning. PM5-programmerade intervaller styrs av monitorn.
+function phaseAt(pl, t){
+  const ty = PASS_TYPES[pl.type] || PASS_TYPES.distans;
+  if (!ty.iv) return t < pl.warm ? { kind:'warm', left: pl.warm - t } : { kind:'work', n:0 };
+  if (rec && [6, 7, 8, 9].includes(live.workoutType)) return { kind: [3, 6, 7].includes(live.workoutState) ? 'rest' : 'work', n:(live.intervalCount || 0) + 1, pm5:true };
+  let x = t - pl.warm;
+  if (x < 0) return { kind:'warm', left:-x };
+  for (let i = 1; i <= pl.n; i++) {
+    if (x < pl.work) return { kind:'work', n:i, left: pl.work - x, into:x };
+    x -= pl.work;
+    if (i < pl.n) { if (x < pl.rest) return { kind:'rest', n:i, left: pl.rest - x, into:x }; x -= pl.rest; }
+  }
+  return { kind:'cool', n:pl.n };
+}
+function phaseLabel(pl, ph){
+  const ty = PASS_TYPES[pl.type];
+  if (!ph) return ty.n;
+  if (ph.kind === 'warm') return `Uppvärmning, ${fmtClock(ph.left)} kvar`;
+  if (ph.kind === 'rest') return `Vila, ${fmtClock(ph.left)} kvar`;
+  if (ph.kind === 'cool') return 'Nedvarvning';
+  if (ty.iv) return ph.pm5 ? `Intervall ${ph.n}` : `Intervall ${ph.n} av ${pl.n}, ${fmtClock(ph.left)} kvar`;
+  return ty.n;
+}
+function pw10(){
+  if (!rec) return live.powerAt && Date.now() - live.powerAt < 3000 ? live.power : null;
+  const t = live.elapsed || 0, v = rec.strokes.filter(x => x.t >= t - 10 && x.p > 0).map(x => x.p);
+  return v.length ? mean(v) : null;
+}
+function bandHTML(val, lo, hi){
+  const span = Math.max(10, hi - lo), min = lo - span*0.9, max = hi + span*0.9, pc = v => Math.max(0, Math.min(100, (v - min)/(max - min)*100));
+  return `<div class="tb"><div class="tb-ok" style="left:${pc(lo).toFixed(1)}%;width:${(pc(hi) - pc(lo)).toFixed(1)}%"></div>${val ? `<div class="tb-mk ${val < lo ? 'lo' : val > hi ? 'hi' : 'ok'}" style="left:${pc(val).toFixed(1)}%"></div>` : ''}</div>`;
+}
+let AC = null;
+function beep(f, d, v){ try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); const o = AC.createOscillator(), g = AC.createGain(); o.frequency.value = f || 880; g.gain.value = v || 0.12; o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime + (d || 0.12)); } catch(e) {} }
+// Faserna sparas i passet så att utvärderingen vet exakt var intervallerna låg
+function trackPhase(){
+  if (!rec || !rec.plan) return;
+  const pl = rec.plan, ph = phaseAt(pl, live.elapsed || 0), key = ph.kind + (ph.n || 0), P = rec.phases || (rec.phases = []), last = P[P.length - 1];
+  if (!last || last.key !== key) {
+    const t = r1(live.elapsed || 0);
+    if (last) last.t1 = t;
+    P.push({ key, kind:ph.kind, n:ph.n || 0, t0:t });
+    if (last) {
+      const ty = PASS_TYPES[pl.type];
+      if (ph.kind === 'work' && ty.iv) { toast(`Intervall ${ph.n}${pl.n && !ph.pm5 ? ` av ${pl.n}` : ''}${pl.pBand ? `, mål ${pl.pBand[0]}–${pl.pBand[1]} W` : ''}`); if (pl.sound) beep(1046, 0.35, 0.16); }
+      else if (ph.kind === 'rest') { toast(`Vila${ph.left ? ' ' + fmtClock(ph.left) : ''}`); if (pl.sound) { beep(523, 0.25); } }
+      else if (ph.kind === 'cool') { toast('Intervallerna är klara. Varva ned lugnt.'); if (pl.sound) beep(784, 0.5); }
+      else if (ph.kind === 'work') toast('Uppvärmningen är klar');
+    }
+  }
+  if ((ph.kind === 'rest' || ph.kind === 'warm') && ph.left != null && ph.left <= 3.5 && ph.left > 0.4 && pl.sound && PASS_TYPES[pl.type].iv) {
+    const sec = Math.ceil(ph.left); if (rec.lastBeep !== key + sec) { rec.lastBeep = key + sec; beep(660, 0.08); }
+  }
+}
+// Drick och ät var 20:e minut. Under intervallpass bara i vilan.
+function drinkReminder(){
+  if (!rec || (live.elapsed || 0) < (rec.nextDrink || 1200)) return;
+  const pl = rec.plan, ph = phaseAt(pl, live.elapsed || 0);
+  if (PASS_TYPES[pl.type].iv && ph.kind === 'work') return;
+  rec.nextDrink = (rec.nextDrink || 1200) + 1200;
+  toast(`${Math.round((live.elapsed || 0)/60)} minuter: dags att dricka${(live.elapsed || 0) >= 3600 ? ' och äta lite' : ''}`);
+}
+function workWindows(s, pl){
+  const tEnd = s === rec ? (live.elapsed || 0) : (s.samples.length ? s.samples[s.samples.length - 1].t : 0);
+  const w = (s.phases || []).filter(p => p.kind === 'work').map(p => [p.t0, p.t1 ?? tEnd]);
+  // Lugna pass: pulsen behöver tre minuter på sig efter uppvärmningen innan den säger något om intensiteten
+  if (w.length && !PASS_TYPES[pl.type].iv) w[0][0] += 180;
+  return w.filter(([a, b]) => b > a);
+}
+function targetShare(s, pl){
+  const ty = PASS_TYPES[pl.type]; if (!ty || ty.control === 'none') return null;
+  const useP = ty.control === 'power' && pl.pBand, band = useP ? pl.pBand : pl.hrBand; if (!band) return null;
+  let tot = 0, inb = 0, over = 0, under = 0;
+  for (const [a, b] of workWindows(s, pl)) {
+    const seg = s.samples.filter(x => x.t >= a + (useP ? 20 : 0) && x.t < b);
+    const vals = useP ? smooth(seg.map(x => x.p || null), 5) : seg.map(x => x.hr || null);
+    for (const v of vals) { if (v == null) continue; tot++; if (v < band[0]) under++; else if (v > band[1]) over++; else inb++; }
+  }
+  return tot >= 20 ? { share:inb/tot, over:over/tot, under:under/tot, useP } : null;
+}
+function segStats(s, t0, t1){
+  const sm = s.samples.filter(x => x.t >= t0 && x.t < t1), rows = strokeRows((s.strokes || []).filter(x => x.t >= t0 && x.t < t1));
+  const P = sm.map(x => x.p).filter(v => v > 0), H = sm.map(x => x.hr).filter(v => v > 0), He = sm.filter(x => x.t >= t1 - 10).map(x => x.hr).filter(v => v > 0);
+  const cv = curvesTimed(s).filter(c => c.t >= t0 && c.t < t1).map(c => curveInfo(c.c, c.dt)).filter(Boolean);
+  return { t0, t1, dur:t1 - t0, p: P.length ? mean(P) : null, hrMax: H.length ? Math.max(...H) : null, hrEnd: He.length ? mean(He) : null,
+    spm: rows.length ? 60*rows.length/sumA(rows.map(r => r.cyc)) : null, work: rows.length ? mean(rows.map(r => r.work)) : null, fill: cv.length ? mean(cv.map(c => c.fill)) : null };
+}
+function hrDrop(s, t, dt){
+  const at = (a, b) => { const v = s.samples.filter(x => x.t >= a && x.t <= b && x.hr > 0).map(x => x.hr); return v.length ? mean(v) : null; };
+  const h0 = at(t - 5, t), h1 = at(t + dt - 3, t + dt + 3);
+  return h0 && h1 ? h0 - h1 : null;
+}
+function ivRows(s){
+  const ph = s.phases || [], now = s === rec ? (live.elapsed || 0) : null;
+  return ph.filter(p => p.kind === 'work' && p.n > 0).map(p => {
+    const t1 = p.t1 ?? now ?? p.t0, st = segStats(s, p.t0, t1), rest = ph.find(q => q.kind === 'rest' && q.n === p.n);
+    const restLen = rest ? (rest.t1 ?? now ?? rest.t0) - rest.t0 : 0;
+    return { n:p.n, ...st, live: p.t1 == null, hrr: rest && restLen >= 55 ? hrDrop(s, t1, Math.min(60, restLen - 3)) : null };
+  });
+}
+// Teknikens baslinje: fem minuter efter uppvärmningen, eller första intervallet
+let techBase = null;
+function techWindow(s, pl, cur){
+  const ty = PASS_TYPES[pl.type], t = s === rec ? (live.elapsed || 0) : 0, ivs = ty.iv ? ivRows(s) : null;
+  if (ty.iv) {
+    if (!ivs.length) return null;
+    const first = ivs[0], last = ivs[ivs.length - 1];
+    return cur ? (last === first && last.live ? null : last) : (first.live ? null : first);
+  }
+  const a = pl.warm, b = a + 300;
+  if (!cur) return t >= b ? segStats(s, a, b) : null;
+  return t >= b + 120 ? segStats(s, t - 60, t) : null;
+}
+function renderTech(){
+  const el = $('#techLive'); if (!el) return;
+  if (!rec) { setHTML(el, '<p class="muted small">Baslinjen sätts under passet: fem minuter efter uppvärmningen, eller första intervallet.</p>'); techBase = null; return; }
+  const pl = rec.plan, base = techWindow(rec, pl, false), cur = techWindow(rec, pl, true);
+  if (base && (!techBase || techBase.t0 !== base.t0 || techBase.t1 !== base.t1)) {
+    const cs = curvesTimed(rec).filter(c => c.t >= base.t0 && c.t < base.t1).map(c => c.c);
+    techBase = { t0:base.t0, t1:base.t1, curve: cs.length ? curveBand(cs).m : null };
+  }
+  if (!base) { setHTML(el, `<p class="muted small">Baslinjen sätts ${PASS_TYPES[pl.type].iv ? 'efter första intervallet' : 'fem minuter efter uppvärmningen'}.</p>`); return; }
+  const c = cur || base, pc = (a, b) => a && b ? (a - b)/b*100 : null;
+  const dW = pc(c.work, base.work), dS = pc(c.spm, base.spm), dF = c.fill && base.fill ? (c.fill - base.fill)*100 : null, dP = pc(c.p, base.p);
+  const tile = (k, v, d, unit) => `<div><div class="k">${k}</div><div class="v">${v}</div><div class="sub">${d == null ? 'baslinje' : `${signedNum(d, 1)} ${unit}`}</div></div>`;
+  let msg = '<span class="okc">Tekniken håller.</span>';
+  if (cur && dW != null && dS != null && dW <= -5 && dS >= 4 && Math.abs(dP || 0) < 8) msg = '<span class="warn">Takten går upp medan kraften per drag sjunker: överkroppen tröttnar. Tänk långa, kraftfulla tag.</span>';
+  else if (cur && dF != null && dF <= -3) msg = '<span class="warn">Kurvan blir spetsigare. Håll trycket längre genom draget.</span>';
+  else if (!cur) msg = '<span class="muted">Baslinjen är satt. Jämförelsen börjar strax.</span>';
+  setHTML(el, `<div class="kv3">${tile('Arbete per drag', c.work ? `${Math.round(c.work)} J` : '–', cur ? dW : null, '%')}${tile('Takt', c.spm ? fmtNum1(c.spm) : '–', cur ? dS : null, '%')}${tile('Fyllnadsgrad', c.fill ? `${Math.round(c.fill*100)} %` : '–', cur ? dF : null, 'p.e.')}</div><p class="small" style="margin:6px 0 2px">${msg}</p>`);
+}
+function coachLive(){
+  const pl = planNow(), ty = PASS_TYPES[pl.type];
+  if (!rec) return { cls:'', txt: ty.desc };
+  const ph = phaseAt(pl, live.elapsed || 0), hr = getHr(), pw = pw10();
+  if (ph.kind === 'warm') return { cls:'', txt:`Uppvärmning, ${fmtClock(ph.left)} kvar. Bygg upp lugnt${ty.iv ? ' och lägg in ett par korta fartökningar mot slutet' : ''}.` };
+  if (ph.kind === 'cool') return { cls:'', txt:'Nedvarvning. Lugnt tempo, låt pulsen sjunka och drick.' };
+  if (ph.kind === 'rest') {
+    const P = rec.phases || [], lw = [...P].reverse().find(p => p.kind === 'work' && p.t1 != null), d = lw && hr ? hrDrop(rec, lw.t1, Math.min(60, (live.elapsed || 0) - lw.t1)) : null;
+    return { cls:'', txt:`Vila${ph.left != null ? `, ${fmtClock(ph.left)} kvar` : ''}.${d != null && d > 0 ? ` Pulsen har sjunkit ${Math.round(d)} slag.` : ''} Andas ut och slappna av i axlarna.` };
+  }
+  if (ty.control === 'none') return { cls:'', txt: pl.type === 'test' ? 'Maximal och jämn insats. Börja kontrollerat, håll effekten och spurta sista minuten.' : 'Lek med farten. Utvärderingen hittar dina fartökningar.' };
+  if (ty.iv && ph.into != null && ph.into < 20) return { cls:'', txt:`Intervall ${ph.n} igång. Hitta rytmen och lägg dig på målet.` };
+  const zl = ty.zone[0] === ty.zone[1] ? ZONES[ty.zone[0]][0] : `${ZONES[ty.zone[0]][0]}–${ZONES[ty.zone[1]][0]}`;
+  if (pl.type === 'troskel' && pl.hrBand && hr && hr > pl.hrBand[1] + 2) return { cls:'hi', txt:`Pulsen ${hr} är över tröskeltaket ${pl.hrBand[1]}. Sänk effekten, tröskel ska kännas kontrollerad.` };
+  if (ty.control === 'power' && pl.pBand && pw) {
+    if (pw > pl.pBand[1]) return { cls:'hi', txt:`För hårt: ${Math.round(pw)} W mot målet ${pl.pBand[0]}–${pl.pBand[1]} W. Sänk lite så att du orkar hela vägen.` };
+    if (pw < pl.pBand[0]) return { cls:'lo', txt:`För lugnt: ${Math.round(pw)} W mot målet ${pl.pBand[0]}–${pl.pBand[1]} W. Öka något.` };
+    return { cls:'ok', txt:`På målet, ${pl.pBand[0]}–${pl.pBand[1]} W. Håll det jämnt.` };
+  }
+  if (pl.hrBand && hr) {
+    const mid = pl.pBand ? Math.round((pl.pBand[0] + pl.pBand[1])/2) : null;
+    if (hr > pl.hrBand[1]) return { cls:'hi', txt:`För hårt: pulsen ${hr} är över taket ${pl.hrBand[1]} för ${zl}.${mid ? ` Sänk mot ungefär ${Math.min(mid, Math.round(pw || mid))} W.` : ' Sänk effekten.'}` };
+    if (hr < pl.hrBand[0]) return { cls:'lo', txt:`Pulsen ${hr} ligger under ${zl}. ${pl.type === 'teknik' ? 'Helt okej på ett teknikpass.' : 'Öka gärna lite.'}` };
+    return { cls:'ok', txt:`Rätt intensitet, ${zl}. ${pl.type === 'teknik' ? 'Fokus på långa, fylliga tag.' : 'Håll den här nivån.'}` };
+  }
+  return { cls:'', txt: maxHr() ? 'Väntar på puls.' : 'Ange maxpuls under Inställningar så kan intensiteten styras.' };
+}
+function liveDrift(s, pl){
+  const w = workWindows(s, pl)[0]; if (!w) return null;
+  const t = live.elapsed || 0; if (t - w[0] < 900) return null;
+  const eff = (a, b) => { const v = s.samples.filter(x => x.t >= a && x.t < b && x.p > 0 && x.hr > 0); return v.length > 60 ? mean(v.map(x => x.p))/mean(v.map(x => x.hr)) : null; };
+  const e1 = eff(w[0], w[0] + 600), e2 = eff(t - 300, t);
+  return e1 && e2 ? (e1 - e2)/e1*100 : null;
+}
+function renderCoach(){
+  const c = coachLive(), el = $('#v-coach'); if (!el) return;
+  el.className = 'coach ' + c.cls; if (el.textContent !== c.txt) el.textContent = c.txt;
+  renderTech();
+  const pl = planNow(), ty = PASS_TYPES[pl.type];
+  const tl = (k, v, sub) => `<div><div class="k">${k}</div><div class="v">${v}</div><div class="sub">${sub || ''}</div></div>`;
+  let h = '';
+  if (rec) {
+    const ts = targetShare(rec, pl), d = !ty.iv ? liveDrift(rec, pl) : null, ivs = ty.iv ? ivRows(rec).filter(r => !r.live) : [];
+    h += tl('I målzonen', ts ? `${Math.round(ts.share*100)} %` : '–', ts ? (ts.over > ts.under ? `${Math.round(ts.over*100)} % över` : `${Math.round(ts.under*100)} % under`) : 'av arbetstiden');
+    if (ty.iv) {
+      const f = ivs.length >= 2 && ivs[0].p ? (ivs[ivs.length - 1].p - ivs[0].p)/ivs[0].p*100 : null;
+      h += tl('Klara', `${ivs.length}${pl.n && !ivs.some(r => r.pm5) ? ` av ${pl.n}` : ''}`, 'intervaller') + tl('Senaste mot första', f != null ? `${signedNum(f, 1)} %` : '–', 'effekt');
+    } else {
+      h += tl('Pulsdrift', d != null ? `${signedNum(d, 1)} %` : '–', d != null ? 'senaste 5 min mot början' : 'efter 15 min') + tl('Snittpuls', (() => { const v = rec.samples.filter(x => x.hr > 0).map(x => x.hr); return v.length ? String(Math.round(mean(v))) : '–'; })(), 'hela passet');
+    }
+  }
+  setHTML($('#v-intstats'), h);
+  if (ty.iv) renderIvLive(pl);
+}
+function renderIvLive(pl){
+  const el = $('#ivLive'); if (!el) return;
+  if (!rec) { setHTML(el, `<div class="ivnow">${pl.n || 1} × ${fmtMS(pl.work || 0)}${pl.rest ? `, vila ${fmtMS(pl.rest)}` : ''}</div><p class="muted small">Uppvärmning ${Math.round(pl.warm/60)} min först. ${pl.pBand ? `Mål ${pl.pBand[0]}–${pl.pBand[1]} W${pl.pSrc === 'model' ? ', uppskattat ur din puls–effektmodell' : ''}.` : 'Ange målwatt eller maxpuls för ett effektmål.'}</p>`); return; }
+  const ph = phaseAt(pl, live.elapsed || 0), rows = ivRows(rec), mid = pl.pBand ? (pl.pBand[0] + pl.pBand[1])/2 : null, p1 = rows[0] && rows[0].p;
+  const head = ph.kind === 'work' ? `Intervall ${ph.n}${ph.pm5 ? '' : ` av ${pl.n}`}${ph.left != null ? `, ${fmtClock(ph.left)} kvar` : ''}` : ph.kind === 'rest' ? `Vila${ph.left != null ? `, ${fmtClock(ph.left)} kvar` : ''}` : ph.kind === 'warm' ? `Uppvärmning, ${fmtClock(ph.left)} kvar` : 'Nedvarvning';
+  setHTML(el, `<div class="ivnow">${head}</div>${rows.length ? `<div class="tablewrap"><table class="ivtab"><tr><th>#</th><th>Watt</th><th>${mid ? 'Mot mål' : 'Mot 1:a'}</th><th>Puls</th><th>Takt</th><th>J/drag</th><th>Återh.</th></tr>
+    ${rows.map(r => `<tr class="${r.live ? 'cur' : ''}"><td>${r.n}</td><td>${r.p ? Math.round(r.p) : '–'}</td><td>${r.p && (mid || p1) ? signedNum((r.p - (mid || p1))/(mid || p1)*100, 1) + ' %' : '–'}</td><td>${r.hrEnd ? Math.round(r.hrEnd) : '–'}</td><td>${r.spm ? fmtNum1(r.spm) : '–'}</td><td>${r.work ? Math.round(r.work) : '–'}</td><td>${r.hrr != null ? `−${Math.round(r.hrr)}` : '–'}</td></tr>`).join('')}</table></div>
+    <p class="muted small" style="margin-top:6px">Puls är snittet sista 10 s av intervallet. Återhämtning är pulsfallet första minuten i vilan.</p>` : '<p class="muted small">Tabellen fylls efter första intervallet.</p>'}`);
+}
+function planBind(){
+  $('#planType').innerHTML = Object.entries(PASS_TYPES).map(([k, v]) => `<option value="${k}">${v.n}</option>`).join('');
+  const ui = () => {
+    const p = settings.plan, ty = PASS_TYPES[p.type] || PASS_TYPES.distans;
+    $('#planType').value = p.type; $('#planN').value = p.n; $('#planWork').value = p.work; $('#planRest').value = p.rest; $('#planWarm').value = p.warm; $('#planW').value = p.targetW || ''; $('#planSound').checked = p.sound !== false;
+    document.querySelectorAll('#planCard .ivonly').forEach(e => e.classList.toggle('hidden', !ty.iv));
+    $('#planN').disabled = $('#planRest').disabled = p.type === 'test';
+    const pl = buildPlan();
+    let t = ty.desc;
+    if (pl.hrBand) t += ` Mål ${pl.hrBand[0]}–${pl.hrBand[1]} slag.`;
+    if (pl.pBand && ty.control !== 'none') t += ` Ungefär ${pl.pBand[0]}–${pl.pBand[1]} W${pl.pSrc === 'model' ? ' enligt din puls–effektmodell' : ''}.`;
+    if (!maxHr() && ty.zone) t += ' Ange maxpuls under Inställningar för att få målzoner.';
+    if (pl.type === 'test') t += ' Skriv 3:00 eller 12:00 som arbetstid.';
+    $('#planDesc').textContent = t;
+  };
+  const save = () => {
+    const prev = settings.plan.type, type = $('#planType').value, ty = PASS_TYPES[type];
+    settings.plan = { type, n:Number($('#planN').value) || 5, work:$('#planWork').value.trim(), rest:$('#planRest').value.trim(), warm:Number($('#planWarm').value) || 0, targetW:$('#planW').value.trim(), sound:$('#planSound').checked };
+    // Byte av passtyp laddar typens standardupplägg
+    if (type !== prev) { settings.plan.warm = ty.warm; if (ty.def) { settings.plan.n = ty.def.n; settings.plan.work = fmtMS(ty.def.work); settings.plan.rest = fmtMS(ty.def.rest); } settings.plan.targetW = ''; }
+    saveSettings(); ui(); renderLive(); renderCoach(); renderZoneLive();
+  };
+  ['#planType', '#planN', '#planWork', '#planRest', '#planWarm', '#planW', '#planSound'].forEach(id => $(id).onchange = save);
+  ui();
+}
+
+/* ============================================================ Växlande väder */
+// En slumpad kedja: 6–20 minuter per väder, temperaturen vandrar sakta, föret följer temperatur och nederbörd
+const WX = { state:null, until:0, accum:0, lastMin:0, log:[] };
+const SKY_NEXT = { sol:['mulet', 'mulet', 'sno'], mulet:['sol', 'sno', 'sno', 'dimma', 'regn'], sno:['mulet', 'snostorm', 'sol', 'mulet'], snostorm:['sno', 'sno', 'mulet'], regn:['mulet', 'mulet', 'dimma', 'sno'], dimma:['mulet', 'sol', 'mulet'] };
+const WX_MSG = { sol:'Solen tittar fram.', mulet:'Det mulnar på.', sno:'Det börjar snöa.', snostorm:'Snöfallet tilltar.', regn:'Det börjar regna.', dimma:'Dimman sveper in.' };
+const randDwell = () => 6 + Math.random()*14;
+function wxNow(){
+  const w = settings.weather || {};
+  if (w.enabled === false) return { sky:'neutral', fore:'perfekt', temp:-5, off:true };
+  if (w.dynamic && rec && WX.state) return WX.state;
+  return w;
+}
+function wxStart(){
+  const w = settings.weather, t0 = Number(w.temp) || 0;
+  WX.state = { sky:w.sky, fore:w.fore, temp:t0, base:t0, snowFor:0 }; WX.until = randDwell(); WX.accum = 0; WX.lastMin = 0; WX.log = [[0, w.sky, w.fore, t0]];
+}
+function wxTick(min){
+  const st = WX.state; if (!st) return;
+  const dm = Math.max(0, min - WX.lastMin); WX.lastMin = min;
+  if (SKY[st.sky].acc) { WX.accum = Math.min(0.4, WX.accum + SKY[st.sky].acc*dm); st.snowFor += dm; st.dryFor = 0; } else { WX.accum *= Math.pow(0.97, dm); st.dryFor = (st.dryFor || 0) + dm; }
+  if (min < WX.until) return;
+  const prevSky = st.sky, prevFore = st.fore, snowed = st.snowFor;
+  st.temp = Math.max(-28, Math.min(7, Math.round((st.temp + (st.base - st.temp)*0.3 + (Math.random()*2 - 1)*2.2)*10)/10));
+  const opts = SKY_NEXT[st.sky] || ['mulet'];
+  let sky = opts[Math.floor(Math.random()*opts.length)];
+  if (sky === 'regn' && st.temp <= 0.5) sky = 'sno';
+  if ((sky === 'sno' || sky === 'snostorm') && st.temp > 1.5) sky = 'regn';
+  let fore = st.fore;
+  const snowing = sky === 'sno' || sky === 'snostorm', wet = fore === 'slask' || fore === 'blotnysno';
+  if (st.temp > 0.5) fore = snowing ? 'blotnysno' : 'slask';
+  else if (snowing && snowed + dm >= 0 && prevSky !== sky && (prevSky === 'sno' || prevSky === 'snostorm' || wet)) fore = st.temp < -1 ? 'nysno' : 'blotnysno';
+  else if (wet && st.temp < -1.5) fore = 'skare';
+  else if ((prevSky === 'sno' || prevSky === 'snostorm') && snowed >= 8) fore = st.temp < -1 ? 'nysno' : 'blotnysno';
+  else if (fore === 'nysno' && !snowing && (st.dryFor || 0) >= 20) fore = st.temp < -12 ? 'hardpack' : 'perfekt';
+  else if (st.temp < -16) fore = 'kyla';
+  if (!snowing) st.snowFor = 0;
+  st.sky = sky; st.fore = fore; WX.until = min + randDwell();
+  WX.log.push([Math.round(min*60), sky, fore, st.temp]);
+  if (rec && rec.world) rec.world.wxLog = WX.log;
+  toast(`${sky === prevSky ? 'Vädret håller i sig.' : WX_MSG[sky]}${fore !== prevFore ? ` Föret: ${FORE[fore].n.toLowerCase()}.` : ''} ${signedNum(Math.round(st.temp), 0)} °C.`);
+}
+
+/* ============================================================ Utvärdering av pass */
+// Fartökningar i pass utan plan: 20 s glidande effekt minst 15 % och 15 W över passets median i minst 30 s
+function autoBlocks(s){
+  const sm = s.samples; if (sm.length < 120) return [];
+  const r = []; let j = 0, acc = 0;
+  for (let i = 0; i < sm.length; i++) { acc += sm[i].p; while (sm[i].t - sm[j].t > 20) { acc -= sm[j].p; j++; } r.push(acc/(i - j + 1)); }
+  const base = nMedian(r.filter(v => v > 0)), thr = Math.max(base*1.15, base + 15), out = [];
+  let st = null, lastHi = null;
+  for (let i = 0; i < sm.length; i++) {
+    if (r[i] > thr) { if (st == null) st = sm[i].t; lastHi = sm[i].t; }
+    else if (st != null && sm[i].t - lastHi > 15) { if (lastHi - st >= 30) out.push([st, lastHi]); st = null; }
+  }
+  if (st != null && lastHi - st >= 30) out.push([st, lastHi]);
+  return out.map(([a, b], i) => ({ n:i + 1, ...segStats(s, Math.max(0, a - 10), b), auto:true }));
+}
+function evalCalc(s, all, n){
+  const pl = s.plan || null, ty = pl ? PASS_TYPES[pl.type] : null, e = { pl, ty };
+  e.ivs = pl && ty.iv ? ivRows(s).filter(r => r.dur >= Math.min(25, (pl.work || 60)*0.6)) : autoBlocks(s);
+  e.ts = pl ? targetShare(s, pl) : null;
+  if (e.ivs.length >= 2 && e.ivs[0].p) e.fade = (e.ivs[e.ivs.length - 1].p - e.ivs[0].p)/e.ivs[0].p*100;
+  if (pl && pl.pBand && ty.iv) e.hit = e.ivs.filter(r => r.p && r.p >= pl.pBand[0]*0.98 && r.p <= pl.pBand[1]*1.02).length;
+  // Teknik under trötthet: första mot sista intervallet, annars första mot sista tredjedelen av arbetet
+  let A = null, B = null;
+  if (pl && ty.iv && e.ivs.length >= 2) { A = e.ivs[0]; B = e.ivs[e.ivs.length - 1]; }
+  else { const sm = s.samples, w0 = pl ? pl.warm : 180, tEnd = sm.length ? sm[sm.length - 1].t : 0; if (tEnd - w0 > 900) { const L = (tEnd - w0)/3; A = segStats(s, w0, w0 + L); B = segStats(s, tEnd - L, tEnd); } }
+  if (A && B && A.work && B.work && A.spm && B.spm && A.p && B.p) e.tech = { work:(B.work - A.work)/A.work*100, spm:(B.spm - A.spm)/A.spm*100, p:(B.p - A.p)/A.p*100, fill: A.fill && B.fill ? (B.fill - A.fill)*100 : null };
+  // Maxtest: två tester på olika längder ger kritisk effekt med arbete–tid-modellen
+  if (pl && pl.type === 'test' && e.ivs[0]) e.test = { dur:e.ivs[0].dur, p:e.ivs[0].p };
+  const cut = new Date(new Date(s.start).getTime() - 60*86400000).toISOString();
+  const tests = all.concat(all.some(x => x.id === s.id) ? [] : [s]).filter(x => x.plan && x.plan.type === 'test' && x.start >= cut && x.start <= s.start && sameSrc(x, s))
+    .map(x => { const r = ivRows(x)[0]; return r && r.p ? { dur:r.dur, p:r.p } : null; }).filter(Boolean);
+  const sh = tests.filter(t => t.dur < 360).sort((a, b) => b.p - a.p)[0], lg = tests.filter(t => t.dur >= 480).sort((a, b) => b.p - a.p)[0];
+  if (sh && lg) { const cp = (lg.p*lg.dur - sh.p*sh.dur)/(lg.dur - sh.dur), wp = (sh.p - cp)*sh.dur/1000; if (cp > 0 && wp > 0) e.cp2 = { cp:Math.round(cp), wp, sh, lg }; }
+  e.verdict = coachVerdict(s, n, e);
+  return e;
+}
+function coachVerdict(s, n, e){
+  const good = [], imp = [], pl = e.pl, ty = e.ty, m = s.summary;
+  if (e.ts) {
+    if (e.ts.share >= 0.8) good.push(`${Math.round(e.ts.share*100)} % av arbetstiden i målzonen. Precis det passet skulle vara.`);
+    else if (e.ts.share < 0.6) imp.push(`Bara ${Math.round(e.ts.share*100)} % av arbetstiden i målzonen. ${e.ts.over > e.ts.under ? 'Du låg oftare för högt, så starta lugnare.' : 'Du låg oftare under målet, så våga trycka lite mer.'}`);
+  }
+  if (pl && (pl.type === 'distans' || pl.type === 'teknik')) {
+    const zt = zoneTimes(s.samples, maxHr());
+    if (zt && zt.tot) { const hard = (zt.z[2] + zt.z[3] + zt.z[4])/zt.tot; if (hard > 0.1) imp.push(`${Math.round(hard*100)} % av tiden över I2 på ett lugnt pass. Lugna pass ska vara lugna, det är där grunden byggs.`); else good.push('Disciplinerat lugnt pass med nästan ingen tid över I2.'); }
+  }
+  if (m.decoupling != null && m.duration >= 1800 && (!ty || !ty.iv)) {
+    if (m.decoupling < 5) good.push(`Liten pulsdrift (${signedNum(m.decoupling, 1)} %), alltså god aerob stabilitet på den här nivån.`);
+    else imp.push(`Pulsdrift ${signedNum(m.decoupling, 1)} %. Intensiteten låg nära gränsen för vad du håller stabilt just nu, eller så spelade vätska och värme in.`);
+  }
+  if (ty && ty.iv && e.ivs.length >= 3 && e.fade != null) {
+    if (Math.abs(e.fade) <= 3) good.push(`Jämna intervaller: sista ${signedNum(e.fade, 1)} % mot första.`);
+    else if (e.fade < -5) imp.push(`Effekten föll ${Math.abs(e.fade).toFixed(0)} % från första till sista intervallet. Börja något lugnare för att hålla hela vägen.`);
+    else if (e.fade > 5) imp.push(`Sista intervallet var ${e.fade.toFixed(0)} % starkare än första, så de första kunde ha varit hårdare.`);
+    if (pl.type === 'troskel' && pl.hrBand) { const over = e.ivs.filter(r => r.hrMax && r.hrMax > pl.hrBand[1] + 2).length; if (over) imp.push(`Pulsen gick över tröskeltaket i ${over} av ${e.ivs.length} intervaller. Tröskel ska vara kontrollerad, annars blir det ett VO2max-pass.`); else good.push('Pulsen höll sig under tröskeltaket i alla intervaller.'); }
+    const hrr = e.ivs.map(r => r.hrr).filter(v => v != null);
+    if (hrr.length >= 2 && hrr[hrr.length - 1] < hrr[0]*0.75) imp.push(`Pulsåterhämtningen i vilan sjönk från ${Math.round(hrr[0])} till ${Math.round(hrr[hrr.length - 1])} slag. Ett tecken på att tröttheten byggdes på.`);
+  }
+  if (e.tech && Math.abs(e.tech.p) < 8) {
+    if (e.tech.work <= -5 && e.tech.spm >= 3) imp.push(`I slutet sjönk arbetet per drag ${Math.abs(e.tech.work).toFixed(0)} % medan takten steg ${e.tech.spm.toFixed(0)} % vid samma effekt. Överkroppen tröttnade, och styrka och uthållighet i lats och triceps är nästa steg.`);
+    else if (Math.abs(e.tech.work) <= 3) good.push('Arbetet per drag höll genom hela passet, så tekniken stod emot tröttheten.');
+  }
+  if (!s.rpe) imp.push('Fyll i RPE under passets sammanfattning. Det behövs för att belastningen ska bli rätt över tid.');
+  if (!good.length && m.duration >= 1200) good.push(`Genomfört pass på ${fmtClock(m.duration)}. Kontinuitet slår enstaka toppass.`);
+  return { good: good.slice(0, 3), imp: imp.slice(0, 2) };
+}
+function coachCardHTML(s, n, e){
+  const pl = e.pl, ty = e.ty, m = s.summary;
+  const plan = !pl ? 'Passet saknar passtyp, så det utvärderas utan plan. Fartökningar har hittats automatiskt.'
+    : `${ty.n}${ty.iv ? `, ${pl.n} × ${fmtMS(pl.work)}${pl.rest ? ` med ${fmtMS(pl.rest)} vila` : ''}` : ''}.${pl.pBand && ty.control !== 'none' ? ` Mål ${pl.pBand[0]}–${pl.pBand[1]} W.` : pl.hrBand ? ` Mål ${pl.hrBand[0]}–${pl.hrBand[1]} slag.` : ''}`;
+  const load = settings.loadSrc === 'srpe' ? (s.rpe ? Math.round(s.rpe*m.duration/60) : null) : trimpOf(s);
+  const tl = (k, v, sub) => nTile(k, v, sub);
+  let tiles = tl('I målzonen', e.ts ? `${Math.round(e.ts.share*100)} %` : '–', e.ts ? (e.ts.useP ? 'effekt, av arbetstiden' : 'puls, av arbetstiden') : 'ingen målzon');
+  if (ty && ty.iv) tiles += tl('Intervaller på målet', e.hit != null ? `${e.hit} av ${e.ivs.length}` : `${e.ivs.length} st`, e.fade != null ? `sista ${signedNum(e.fade, 1)} % mot första` : '');
+  else tiles += tl(pl ? 'Fartökningar' : 'Fartökningar hittade', String(e.ivs.length), e.ivs.length ? 'minst 30 s över passets nivå' : '');
+  tiles += tl('Belastning', load ? fmtInt(load) : '–', settings.loadSrc === 'srpe' ? 'sRPE' : 'TRIMP');
+  if (e.test) tiles += tl('Testresultat', `${Math.round(e.test.p)} W`, `snitt över ${fmtMS(e.test.dur)}`);
+  const li = a => a.map(x => `<li>${esc(x)}</li>`).join('');
+  return `<div class="card wide"><h3>Tränarens sammanfattning</h3><p class="nlead">${esc(plan)}</p><div class="kv">${tiles}</div>
+    <div class="verdict"><div><h4 class="okc">Det här var bra</h4><ul>${li(e.verdict.good) || '<li class="muted">Inget särskilt att lyfta fram.</li>'}</ul></div><div><h4 class="warn">Att utveckla</h4><ul>${li(e.verdict.imp) || '<li class="muted">Inget särskilt, fortsätt så.</li>'}</ul></div></div>
+    ${e.cp2 ? `<p class="ndesc">Dina två tester (${fmtMS(e.cp2.sh.dur)} på ${Math.round(e.cp2.sh.p)} W och ${fmtMS(e.cp2.lg.dur)} på ${Math.round(e.cp2.lg.p)} W) ger kritisk effekt ${e.cp2.cp} W och W′ ${fmtNum1(e.cp2.wp)} kJ.</p><div class="btnrow"><button class="btn primary" data-act="usecp2">Använd som CP och W′</button></div>` : ''}
+    <p class="ndesc">Omdömet bygger på fasta regler i datan: andel i målzonen, intervallernas jämnhet, pulstak, pulsdrift och hur arbetet per drag håller sig vid samma effekt.</p></div>`;
+}
+function ivEvalHTML(s, e){
+  if (!e.ivs.length) return '';
+  const pl = e.pl, mid = pl && pl.pBand && e.ty.iv ? (pl.pBand[0] + pl.pBand[1])/2 : null, p1 = e.ivs[0].p;
+  return `<div class="card wide"><h3>${e.ivs[0].auto ? 'Fartökningar' : 'Intervaller'}</h3><div class="tablewrap"><table class="ivtab">
+    <tr><th>#</th><th>Start</th><th>Tid</th><th>Watt</th><th>${mid ? 'Mot mål' : 'Mot 1:a'}</th><th>Puls slut</th><th>Maxpuls</th><th>Takt</th><th>J/drag</th><th>Fyllnad</th><th>Återh. 60 s</th></tr>
+    ${e.ivs.map(r => `<tr><td>${r.n}</td><td>${fmtClock(r.t0)}</td><td>${fmtMS(r.dur)}</td><td>${r.p ? Math.round(r.p) : '–'}</td><td>${r.p ? signedNum((r.p - (mid || p1))/(mid || p1)*100, 1) + ' %' : '–'}</td><td>${r.hrEnd ? Math.round(r.hrEnd) : '–'}</td><td>${r.hrMax || '–'}</td><td>${r.spm ? fmtNum1(r.spm) : '–'}</td><td>${r.work ? Math.round(r.work) : '–'}</td><td>${r.fill ? Math.round(r.fill*100) + ' %' : '–'}</td><td>${r.hrr != null ? '−' + Math.round(r.hrr) : '–'}</td></tr>`).join('')}
+  </table></div>${e.ivs[0].auto ? '<p class="ndesc">Hittade automatiskt: perioder på minst 30 s där effekten låg minst 15 % och 15 W över passets median.</p>' : ''}</div>`;
+}
+function intensityCardHTML(s, n, all){
+  const mx = maxHr(), zt = zoneTimes(s.samples, mx), rows = zt && zt.tot ? ZONES.map((z, i) => [z[0], zt.z[i]]).concat([['Under I1', zt.under]]) : null;
+  const tz = s.plan && PASS_TYPES[s.plan.type].zone;
+  return `<div class="card"><h3>Intensitet</h3>
+    ${rows ? `<div class="zrows">${rows.map(([l, sec], i) => `<span${tz && i >= tz[0] && i <= tz[1] ? ' class="okc"' : ''}>${l}</span><div class="track0"><div class="bar" style="width:${(sec/zt.tot*100).toFixed(1)}%"></div></div><span>${fmtClock(sec)}</span>`).join('')}</div>` : '<p class="muted small">Ange maxpuls för zonfördelningen.</p>'}
+    ${powerCardHTML(n, all).replace('<div class="card"><h3>Effekt och trötthet</h3>', '<h3 style="margin-top:12px">Effekt och trötthet</h3>').replace(/<\/div>$/, '')}</div>`;
+}
+function evalMd(s, all){
+  const n = nerdCalc(s, all), e = evalCalc(s, all, n), pl = e.pl, ty = e.ty, out = [];
+  out.push('', '## Passtyp och utfall', pl ? `${ty.n}${ty.iv ? `, ${pl.n} × ${fmtMS(pl.work)}${pl.rest ? ` med ${fmtMS(pl.rest)} vila` : ''}` : ''}, uppvärmning ${Math.round(pl.warm/60)} min.${pl.pBand && ty.control !== 'none' ? ` Effektmål ${pl.pBand[0]}–${pl.pBand[1]} W (${pl.pSrc === 'manual' ? 'satt av mig' : 'ur puls–effektmodellen'}).` : ''}${pl.hrBand ? ` Pulsmål ${pl.hrBand[0]}–${pl.hrBand[1]} slag.` : ''}` : 'Ingen passtyp vald (äldre pass).');
+  if (e.ts) out.push('', `Andel av arbetstiden i målzonen: ${Math.round(e.ts.share*100)} % (${Math.round(e.ts.over*100)} % över, ${Math.round(e.ts.under*100)} % under), mätt på ${e.ts.useP ? 'effekt' : 'puls'}.`);
+  if (e.ivs.length) out.push('', mdTable(['#', 'Start', 'Tid', 'Watt', 'Puls slut', 'Maxpuls', 'Takt', 'J/drag', 'Fyllnad', 'Pulsfall 60 s i vilan'],
+    e.ivs.map(r => [r.n, fmtClock(r.t0), fmtMS(r.dur), r.p ? Math.round(r.p) : null, r.hrEnd ? Math.round(r.hrEnd) : null, r.hrMax, r.spm ? fmtNum1(r.spm) : null, r.work ? Math.round(r.work) : null, r.fill ? `${Math.round(r.fill*100)} %` : null, r.hrr != null ? Math.round(r.hrr) : null])));
+  if (e.ivs.length && e.ivs[0].auto) out.push('', 'Raderna ovan är fartökningar som hittats automatiskt.');
+  out.push('', 'Appens regelbaserade omdöme:', ...e.verdict.good.map(x => `- Bra: ${x}`), ...e.verdict.imp.map(x => `- Att utveckla: ${x}`));
+  return out;
 }
 
 /* ============================================================ Rendering */
@@ -2523,22 +3023,24 @@ let dirty = false;
 function markDirty(){ if (!dirty) { dirty = true; setTimeout(() => { dirty = false; if (currentView==='live') renderLive(); }, 200); } }
 function renderLive(){
   const set = (id, v) => { const el = document.getElementById(id); if (el && el.textContent !== v) el.textContent = v; };
+  const pl = planNow(), ty = PASS_TYPES[pl.type] || PASS_TYPES.distans, pw = pw10(), hr = getHr();
   set('v-elapsed', fmtTime(live.elapsed));
-  set('v-state', connState==='none' ? 'Ej ansluten' : (WS[live.workoutState] ?? 'Ansluten'));
+  set('v-power', pw ? String(Math.round(pw)) : '–');
   set('v-pace', live.pace ? fmtPace(live.pace) : '–');
-  set('v-power', live.power ? String(live.power) : '–');
   set('v-spm', live.spm > 0 && live.spm < 100 ? String(live.spm) : '–');
-  const hr = getHr(); set('v-hr', hr ? String(hr) : '–');
-  set('v-dist', live.distance != null ? String(Math.round(live.distance)) : '–');
-  set('v-avgpace', live.avgPace ? fmtPace(live.avgPace) : '–');
-  set('v-avgpower', live.avgPower ? String(live.avgPower) : '–');
-  set('v-cal', live.calories != null ? String(live.calories) : '–');
-  set('v-strokes', live.strokeCount != null ? String(live.strokeCount) : '–');
-  set('v-work', live.work ? String(Math.round(live.work)) : '–');
-  set('v-dps', live.strokeDistance ? live.strokeDistance.toFixed(2) : '–');
-  set('v-peak', live.peakForce ? live.peakForce.toFixed(0) : '–');
-  set('v-ratio', live.driveTime && live.recoveryTime ? `1 : ${(live.recoveryTime/live.driveTime).toFixed(1)}` : '–');
-  set('v-drag', live.dragFactor ? String(live.dragFactor) : '–');
+  set('v-hr', hr ? String(hr) : '–');
+  const ph = rec ? phaseAt(pl, live.elapsed || 0) : null;
+  set('v-phase', connState === 'none' ? 'Ej ansluten' : !rec ? `${ty.n}, väntar på start` : phaseLabel(pl, ph));
+  // Målband för den variabel som styr passet just nu
+  const work = !ph || ph.kind === 'work', useP = ty.control === 'power' && pl.pBand, band = useP ? pl.pBand : pl.hrBand;
+  setHTML($('#v-tband'), band && work && ty.control !== 'none' ? bandHTML(useP ? pw : hr, band[0], band[1]) + `<div class="tb-lbl"><span>${useP ? 'Effekt' : 'Puls'}</span><span>mål ${band[0]}–${band[1]} ${useP ? 'W' : 'slag'}</span></div>` : '');
+  setHTML($('#v-ptgt'), useP && pl.pSrc === 'model' && work ? 'effektmål ur<br>din pulsmodell' : '');
+  setHTML($('#v-sub'), `<span>Distans<b>${live.distance != null ? fmtInt(live.distance) : '–'}</b></span><span>Snittwatt<b>${live.avgPower || '–'}</b></span><span>Snittempo<b>${live.avgPace ? fmtPace(live.avgPace) : '–'}</b></span>`);
+  $('#liveGrid').className = ty.iv ? 'mode-iv' : 'mode-dist';
+  $('#ivCard').classList.toggle('hidden', !ty.iv);
+  $('#trackCard').classList.toggle('hidden', !!ty.iv);
+  $('#effCard').classList.toggle('hidden', !!ty.iv);
+  $('#planCard').classList.toggle('hidden', !!rec);
   renderTrack();
 }
 
@@ -2705,6 +3207,7 @@ Analysera passet ärligt och konkret:
 - Vad datan avslöjar: effektfördelning och fall över tid, pulsdrift, val av takt och arbete per drag, förändringar i kraftkurvan som tecken på teknisk trötthet.
 - Effektivitet: meter per pulsslag och hur den står sig mot mina tidigare minuter vid samma effekt.
 - Belastning: upplevd ansträngning (Borg CR10), sRPE och tid i pulszoner enligt Olympiatoppens I-skala.
+- Passtyp och plan: blev passet det som var planerat? Använd andelen i målzonen, intervalltabellen och tränarens omdöme.
 - Mål, spökåkare och personbästa, om sådana finns i datan.
 - Nördmåtten: kraftkurvans form, takt mot kraft, rytm, normaliserad effekt, W′-balans, puls vid referenseffekt och pulskinetik.
 - Hur passet står sig mot historiken: trender, jämförbara pass, framsteg eller varningstecken.
@@ -2768,7 +3271,7 @@ async function buildPassFile(s){
       ['Meter per pulsslag', fmtMpb(m.mpb), `Distans delat med antal pulsslag. Räknas bara på minuter efter ${EFF.warmup/60} minuters uppvärmning, med minst ${EFF.minP} W, puls och högst 15 % effektändring mot minuten före (${(m.effMin||[]).length} minuter)`],
       ['Effektivitet mot historiken', m.eff && m.eff.index != null ? fmtPct(m.eff.index) : null, `Snitt per minut av meter per pulsslag jämfört med medianen för mina tidigare minuter vid samma effekt (±10 %). Inom ±${effBand()} % räknas som i nivå`]
     ]),
-    ...goalMd(s), ...zonesMd(s), ...mmpMd(s, all), ...courseMd(s, all), ...worldMd(s), ...nerdMd(s, all),
+    ...goalMd(s), ...zonesMd(s), ...mmpMd(s, all), ...courseMd(s, all), ...worldMd(s), ...evalMd(s, all), ...nerdMd(s, all),
     '', '## Per minut',
     mdTable(['Minut','Watt','Takt (spm)','Puls','Tempo /500 m','m/slag'], m.perMin.map(x => [x.min, x.p, x.spm, x.hr, fmtPace(x.pace), x.mpb != null ? fmtMpb(x.mpb) : null])),
     ...(splits.length ? ['', '## Splittar', mdTable(['Nr','Tid','Meter','Tempo /500 m','Watt','Takt','Puls'],
@@ -3001,7 +3504,7 @@ function show(view){
   if (view === 'history') renderHistory();
   if (view === 'nerd') { renderNerd(true); if ($('#logCard').open) renderLog(); }
   if (view === 'world') worldEnter();
-  if (view === 'live') { renderLive(); drawLiveChart(); drawForce(); trackT = 0; renderTrack(); renderZoneLive(); }
+  if (view === 'live') { renderLive(); renderCoach(); drawLiveChart(); drawForce(); trackT = 0; renderTrack(); renderZoneLive(); }
   window.scrollTo(0,0);
 }
 // 1 Hz: livegraf och inaktivitetskontroll
@@ -3009,9 +3512,9 @@ setInterval(() => {
   if (connState !== 'none') {
     liveBuf.push({ t: Date.now()/1000, p: live.power || 0, hr: getHr() });
     while (liveBuf.length > 190) liveBuf.shift();
-    if (currentView === 'live') drawLiveChart();
   }
-  if (currentView === 'live') { renderEffLive(); renderZoneLive(); renderTrack(); }
+  if (rec) { trackPhase(); drinkReminder(); }
+  if (currentView === 'live') { renderEffLive(); renderZoneLive(); renderTrack(); renderCoach(); drawLiveChart(); drawForce(); }
   if (currentView === 'nerd' && rec && Date.now() - nerdT > 2500) renderNerd();
   if (rec && !finTimer && Date.now() - rec.lastChange > 120000) finalize('ingen aktivitet på två minuter');
 }, 1000);
@@ -3074,7 +3577,7 @@ window.addEventListener('resize', () => { if (currentView === 'live') { drawLive
   $('#setLoadSrc').value = settings.loadSrc; $('#setLoadSrc').onchange = e => { settings.loadSrc = e.target.value; saveSettings(); };
   $('#nerdPass').onchange = e => { nerdSelWanted = e.target.value; renderNerd(true); };
   $('#logCard').addEventListener('toggle', () => { if ($('#logCard').open) renderLog(); });
-  worldBind(); await worldLoadCourses();
+  worldBind(); await worldLoadCourses(); planBind(); rebuildHRM();
   setConn('none'); show('live'); renderEffLive();
 })();
 </script>
