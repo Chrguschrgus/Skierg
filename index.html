@@ -205,6 +205,29 @@ canvas.chart.sq{height:250px}
 .nlead{margin:2px 0 8px}
 details.card summary{cursor:pointer;list-style:revert}
 @media (min-width:1100px){ .nerdgrid{grid-template-columns:repeat(2,minmax(0,1fr))} .nerdgrid .wide{grid-column:1/-1} }
+.worldbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px;padding:10px 14px}
+.worldbar .wsel{flex:1 1 200px;min-width:0}
+.worldbar label{margin-top:0}
+.worldbar .btnrow{margin-top:0}
+#worldStage{position:relative;height:calc(100vh - 230px);min-height:340px;border-radius:12px;overflow:hidden;background:#bfd4e6}
+#worldStage:fullscreen{height:100vh;border-radius:0}
+#worldCanvasWrap,#worldCanvasWrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;color:#fff;background:rgba(10,20,28,.62);border-radius:10px;padding:8px 12px;font-variant-numeric:tabular-nums;pointer-events:none;backdrop-filter:blur(3px)}
+.hud .k{font-size:12px;color:#b9c7d1;font-weight:600}
+.hud .v{font-family:var(--num);font-size:30px;font-weight:700;line-height:1.05}
+.hud .u{font-size:13px;color:#b9c7d1;margin-left:3px;font-family:var(--body)}
+.hud-tl{top:10px;left:10px;max-width:46%}
+.hud-tl .name{font-weight:700;font-size:15px}
+.hud-tl .sub{font-size:13px;color:#d5dee4}
+.hud-tr{top:10px;right:10px;display:flex;gap:14px}
+.hud-bl{bottom:66px;left:10px;display:grid;grid-template-columns:repeat(4,auto);gap:0 16px}
+.hud-br{bottom:66px;right:10px;text-align:right}
+.hud-br .ahead{color:#7be0a6} .hud-br .behind{color:#ff8f80}
+.hud-prof{left:10px;right:10px;bottom:10px;height:48px;padding:4px 6px}
+.hud-prof canvas{width:100%;height:100%;display:block}
+.worldmsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(10,20,28,.78);color:#fff;padding:14px 18px;border-radius:12px;max-width:min(90%,460px);text-align:center;font-size:15px;line-height:1.45}
+#worldStage:fullscreen .hud .v{font-size:44px}
+@media (max-width:700px){ .hud .v{font-size:22px} .hud-bl{grid-template-columns:repeat(2,auto)} #worldStage{height:calc(100vh - 300px)} }
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));background:var(--text);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s;z-index:20;pointer-events:none;max-width:90vw}
 .toast.show{opacity:1}
 </style>
@@ -315,6 +338,30 @@ details.card summary{cursor:pointer;list-style:revert}
     <div id="histList"></div>
   </section>
 
+  <!-- VÄRLD -->
+  <section id="view-world" class="hidden">
+    <div class="card worldbar">
+      <div class="wsel"><label for="worldCourse">Bana</label><select id="worldCourse"></select></div>
+      <div class="wsel"><label for="worldStart">Start</label><select id="worldStart"><option value="start">Från start</option><option value="resume">Fortsätt där jag slutade</option></select></div>
+      <div class="btnrow">
+        <button class="btn" id="btnGpx">Importera GPX</button>
+        <button class="btn" id="btnCam">Kamera: bakom</button>
+        <button class="btn" id="btnFull">Helskärm</button>
+        <button class="btn danger" id="btnDelCourse">Ta bort banan</button>
+      </div>
+      <input type="file" id="fileGpx" accept=".gpx,application/gpx+xml,application/xml,text/xml" class="hidden">
+    </div>
+    <div id="worldStage">
+      <div id="worldCanvasWrap"></div>
+      <div class="hud hud-tl" id="hudTL"></div>
+      <div class="hud hud-tr" id="hudTR"></div>
+      <div class="hud hud-bl" id="hudBL"></div>
+      <div class="hud hud-br" id="hudBR"></div>
+      <div class="hud hud-prof"><canvas id="worldProfile"></canvas></div>
+      <div class="worldmsg hidden" id="worldMsg"></div>
+    </div>
+  </section>
+
   <!-- NÖRD -->
   <section id="view-nerd" class="hidden">
     <div class="card nerdhead">
@@ -363,6 +410,14 @@ details.card summary{cursor:pointer;list-style:revert}
       </div>
     </div>
     <div class="card">
+      <h2>Värld</h2>
+      <p class="muted small">Fysiken räknar farten ur effekt, lutning, friktion och luftmotstånd. Friktionen kalibreras så att kalibreringseffekten ger samma fart som PM5 på plan mark.</p>
+      <div class="row2">
+        <div><label for="setWeight">Vikt med utrustning (kg)</label><input id="setWeight" type="number" inputmode="decimal" min="40" max="150" placeholder="80"></div>
+        <div><label for="setWorldRefW">Kalibreringseffekt (W)</label><input id="setWorldRefW" type="number" inputmode="numeric" placeholder="automatisk"></div>
+      </div>
+    </div>
+    <div class="card">
       <h2>PM5</h2>
       <label for="setRate">Uppdateringsfrekvens</label>
       <select id="setRate">
@@ -390,6 +445,7 @@ details.card summary{cursor:pointer;list-style:revert}
 <nav class="bottom">
   <button data-view="live" class="active">Bas</button>
   <button data-view="nerd">Nörd</button>
+  <button data-view="world">Värld</button>
   <button data-view="history">Historik</button>
   <button data-view="settings">Inställningar</button>
 </nav>
@@ -484,7 +540,8 @@ function smooth(a, k){
 
 /* ============================================================ Inställningar */
 const DEFAULTS = { rate:2, maxHr:'', about:'', effBand:3, target:{ mode:'auto', dist:5000, time:30 }, course:null,
-  restHr:'', sex:'m', loadSrc:'trimp', cp:'', wprime:'', refW:'' };
+  restHr:'', sex:'m', loadSrc:'trimp', cp:'', wprime:'', refW:'',
+  weight:'', worldRefW:'', world:{ course:'ovningsbanan', start:'start', pos:{} } };
 let settings = (() => { try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('skierg.settings') || '{}') }; } catch(e) { return { ...DEFAULTS }; } })();
 // Rensa bort API-nyckel från tidigare version
 if ('apiKey' in settings || 'model' in settings) { delete settings.apiKey; delete settings.model; try { localStorage.setItem('skierg.settings', JSON.stringify(settings)); } catch(e) {} }
@@ -497,8 +554,12 @@ const DB = {
   async open(){
     try {
       this.db = await new Promise((res,rej) => {
-        const r = indexedDB.open('skierg-live', 1);
-        r.onupgradeneeded = () => r.result.createObjectStore('sessions', { keyPath:'id' });
+        const r = indexedDB.open('skierg-live', 2);
+        r.onupgradeneeded = () => {
+          const db = r.result;
+          if (!db.objectStoreNames.contains('sessions')) db.createObjectStore('sessions', { keyPath:'id' });
+          if (!db.objectStoreNames.contains('courses')) db.createObjectStore('courses', { keyPath:'id' });
+        };
         r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
       });
     } catch(e) { this.db = null; toast('Lokal databas otillgänglig, pass sparas bara tillfälligt'); }
@@ -508,7 +569,12 @@ const DB = {
   async all(){ if (!this.db) return [...this.mem.values()]; return await reqP(this.store('readonly').getAll()); },
   async get(id){ if (!this.db) return this.mem.get(id); return await reqP(this.store('readonly').get(id)); },
   async del(id){ if (!this.db) { this.mem.delete(id); return; } await reqP(this.store('readwrite').delete(id)); },
-  async clear(){ if (!this.db) { this.mem.clear(); return; } await reqP(this.store('readwrite').clear()); }
+  async clear(){ if (!this.db) { this.mem.clear(); return; } await reqP(this.store('readwrite').clear()); },
+  cmem:new Map(),
+  cstore(mode){ return this.db.transaction('courses', mode).objectStore('courses'); },
+  async courseAll(){ if (!this.db) return [...this.cmem.values()]; return await reqP(this.cstore('readonly').getAll()); },
+  async coursePut(c){ if (!this.db) { this.cmem.set(c.id, c); return; } await reqP(this.cstore('readwrite').put(c)); },
+  async courseDel(id){ if (!this.db) { this.cmem.delete(id); return; } await reqP(this.cstore('readwrite').delete(id)); }
 };
 
 /* ============================================================ Livestatus */
@@ -563,7 +629,7 @@ function dispatch(uuid, dv){
           recoveryTime:s.recoveryTime, strokeCount:s.strokeCount, strokeDistance:s.strokeDistance });
         if (rec) recStroke(s); break;
       }
-      case 'addStroke': { const s = P.addStroke(dv); live.power = s.power; live.strokeCount = s.strokeCount; if (rec) recStrokePower(s); break; }
+      case 'addStroke': { const s = P.addStroke(dv); live.power = s.power; live.powerAt = Date.now(); live.strokeCount = s.strokeCount; if (rec) recStrokePower(s); break; }
       case 'split': { const s = P.split(dv); if (rec) mergeSplit(s.splitNumber, { time:s.splitTime, dist:s.splitDistance, restTime:s.restTime }); break; }
       case 'addSplit': { const s = P.addSplit(dv); if (rec) mergeSplit(s.splitNumber, { spm:s.spm, hr:s.workHr, pace:s.avgPace, power:s.power, cal:s.calories }); break; }
       case 'summary': { const s = P.summary(dv); logMsg('Sammanfattning från PM5 mottagen'); if (rec) { rec.pm.summary = s; scheduleFinalize(); } break; }
@@ -606,7 +672,7 @@ function startSession(){
     machine: machineName(live.machine), workoutType: live.workoutType,
     samples:[], strokes:[], splits:[], curves:[], pm:{}, note:'',
     lastElapsed: live.elapsed, lastChange: Date.now(), lastSampleT: -1 };
-  rec.target = activeTarget(); lastCp = null; ghost = null; loadGhost(); nerdSelWanted = null;
+  rec.target = activeTarget(); lastCp = null; ghost = null; loadGhost(); nerdSelWanted = null; worldBegin();
   $('#summaryLive').innerHTML = '';
   logMsg('Pass startat'); toast('Passet har startat, spelar in');
   updateRecUI();
@@ -646,6 +712,7 @@ async function finalize(reason){
   updateRecUI();
   if (s.samples.length < 15) { try { await DB.del(s.id); } catch(e) {} toast('Passet var för kort för att sparas'); return; }
   s.end = new Date().toISOString(); s.endReason = reason;
+  worldEnd(s);
   if (s.source !== 'demo' && live.machine != null) s.machine = machineName(live.machine);
   s.summary = computeSummary(s);
   let all = []; try { all = await DB.all(); } catch(e) {}
@@ -1870,6 +1937,425 @@ function nerdHistMd(all){
   return out;
 }
 
+/* ============================================================ Värld: banor */
+const WORLD = { step:10, chunkLen:250, ahead:1300, behind:250 };
+const PRACTICE_ID = 'ovningsbanan';
+const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+let worldCourses = new Map();
+function finishCourse(c){
+  const n = c.pts.length; c.len = (n - 1)*WORLD.step;
+  let gain = 0; for (let i=1; i<n; i++) { const d = c.pts[i][1] - c.pts[i-1][1]; if (d > 0) gain += d; }
+  const ys = c.pts.map(p => p[1]); c.gain = gain; c.minY = Math.min(...ys); c.maxY = Math.max(...ys);
+  // En bana på 85–95 km tolkas som Vasaloppet; kontrollerna skalas till banans längd
+  if (!c.cps && c.len > 85000 && c.len < 95000) c.cps = COURSE.cps.map(([nm, d]) => [nm, d*c.len/COURSE.total]);
+  return c;
+}
+function practiceCourse(){
+  const pts = []; let x = 0, z = 0, hd = 0;
+  for (let i=0; i<=600; i++) {
+    const sd = i*WORLD.step;
+    hd += 0.012*Math.sin(sd/310) + 0.008*Math.sin(sd/127 + 1.3);
+    if (i) { x += Math.sin(hd)*WORLD.step; z -= Math.cos(hd)*WORLD.step; }
+    pts.push([r1(x), r1(300 + 18*Math.sin(sd/520) + 9*Math.sin(sd/190 + 0.7) + 4*Math.sin(sd/77 + 2.1)), r1(z)]);
+  }
+  return finishCourse({ id:PRACTICE_ID, name:'Övningsbanan', pts, builtin:true, hasEle:true });
+}
+function parseGPX(text, name){
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('filen gick inte att läsa som GPX');
+  let nodes = [...doc.getElementsByTagName('trkpt')];
+  if (nodes.length < 2) nodes = [...doc.getElementsByTagName('rtept')];
+  if (nodes.length < 2) throw new Error('hittade inga spårpunkter i filen');
+  const raw = nodes.map(nd => { const e = nd.getElementsByTagName('ele')[0]; return { lat:+nd.getAttribute('lat'), lon:+nd.getAttribute('lon'), ele: e ? parseFloat(e.textContent) : NaN }; })
+    .filter(p => isFinite(p.lat) && isFinite(p.lon));
+  const hasEle = raw.filter(p => isFinite(p.ele)).length > raw.length*0.5;
+  const lat0 = mean(raw.map(p => p.lat)), lon0 = mean(raw.map(p => p.lon)), kx = 111320*Math.cos(lat0*Math.PI/180), kz = 110540;
+  // Lokal projektion i meter: x österut, z söderut (minus norr), y höjd
+  const P = []; let cum = 0, lastEle = 0;
+  for (const p of raw) {
+    const x = (p.lon - lon0)*kx, z = -(p.lat - lat0)*kz, y = hasEle && isFinite(p.ele) ? (lastEle = p.ele) : lastEle;
+    if (P.length) { const q = P[P.length-1], d = Math.hypot(x - q.x, z - q.z); if (d < 0.5) continue; cum += d; }
+    P.push({ x, y, z, s:cum });
+  }
+  if (cum < 300) throw new Error('banan är kortare än 300 m');
+  const res = []; let j = 0;
+  for (let sd = 0; sd <= cum; sd += WORLD.step) {
+    while (j < P.length - 2 && P[j+1].s < sd) j++;
+    const a = P[j], b = P[j+1], f = b.s > a.s ? Math.min(1, (sd - a.s)/(b.s - a.s)) : 0;
+    res.push([a.x + (b.x - a.x)*f, a.y + (b.y - a.y)*f, a.z + (b.z - a.z)*f]);
+  }
+  // Glidande medel mot GPS-brus: 70 m i plan, 90 m i höjd
+  const sm = (k, idx) => res.map((_, i) => { let t = 0, n = 0; for (let q = Math.max(0, i - k); q <= Math.min(res.length - 1, i + k); q++) { t += res[q][idx]; n++; } return t/n; });
+  const xs = sm(3, 0), ys = sm(4, 1), zs = sm(3, 2);
+  return finishCourse({ id:'c' + Date.now(), name, pts: res.map((_, i) => [r1(xs[i]), r1(ys[i]), r1(zs[i])]), hasEle, created:new Date().toISOString() });
+}
+function courseAt(c, sd){
+  const n = c.pts.length, f = Math.max(0, Math.min(n - 1.0001, sd/WORLD.step)), i = Math.floor(f), t = f - i, a = c.pts[i], b = c.pts[i+1];
+  return { x:a[0] + (b[0] - a[0])*t, y:a[1] + (b[1] - a[1])*t, z:a[2] + (b[2] - a[2])*t };
+}
+function courseGrade(c, sd){
+  const a = courseAt(c, Math.max(0, sd - 20)), b = courseAt(c, Math.min(c.len, sd + 20)), d = Math.hypot(b.x - a.x, b.z - a.z);
+  return d > 1 ? (b.y - a.y)/d : 0;
+}
+function courseDir(c, sd){
+  const a = courseAt(c, Math.max(0, sd - 10)), b = courseAt(c, Math.min(c.len, sd + 10)), dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz) || 1;
+  return { dx:dx/L, dz:dz/L };
+}
+function courseGain(c, s0, s1){
+  let g = 0; const i0 = Math.max(0, Math.floor(s0/WORLD.step)), i1 = Math.min(c.pts.length - 1, Math.ceil(s1/WORLD.step));
+  for (let i = i0 + 1; i <= i1; i++) { const d = c.pts[i][1] - c.pts[i-1][1]; if (d > 0) g += d; }
+  return g;
+}
+async function worldLoadCourses(){
+  worldCourses = new Map([[PRACTICE_ID, practiceCourse()]]);
+  try { for (const c of await DB.courseAll()) worldCourses.set(c.id, c); } catch(e) {}
+  if (!worldCourses.has(settings.world.course)) settings.world.course = PRACTICE_ID;
+  worldFillSelect();
+  if (!rec) worldReset();
+}
+function worldFillSelect(){
+  const el = $('#worldCourse'), list = [...worldCourses.values()].sort((a, b) => (a.builtin ? -1 : 0) - (b.builtin ? -1 : 0) || a.name.localeCompare(b.name, 'sv'));
+  el.innerHTML = list.map(c => `<option value="${esc(c.id)}">${esc(c.name)}, ${fmtKm(c.len)} km</option>`).join('');
+  el.value = settings.world.course;
+  $('#worldStart').value = settings.world.start || 'start';
+  $('#btnDelCourse').classList.toggle('hidden', !!(worldCourses.get(settings.world.course) || {}).builtin);
+}
+
+/* ============================================================ Värld: fysik */
+// m·dv/dt = P/v − m·g·sin θ − μ·m·g·cos θ − ½·ρ·CdA·v²
+const PHYS = { g:9.81, rho:1.3, cda:0.5 };
+const W = { course:null, s:0, v:0, mu:0.04, s0:0, finished:false, ghost:null, lastTick:0, lastRecT:-1 };
+const worldMass = () => Number(settings.weight) || 80;
+function worldRefW(){
+  const set = Number(settings.worldRefW); if (set > 0) return set;
+  return W.autoRef || 130;
+}
+function worldCalibrate(){
+  const m = worldMass(), pr = worldRefW(), v = Math.cbrt(pr/2.8), air = 0.5*PHYS.rho*PHYS.cda*v**3;
+  W.mu = Math.max(0.01, Math.min(0.12, (pr - air)/(m*PHYS.g*v)));
+}
+function worldStep(dt){
+  const c = W.course; if (!c || W.finished) return;
+  const m = worldMass(), fresh = live.powerAt && Date.now() - live.powerAt < 3000 && ACTIVE_STATES.has(live.workoutState);
+  const P = fresh ? (live.power || 0) : 0, th = Math.atan(courseGrade(c, W.s));
+  const F = P/Math.max(W.v, 1) - m*PHYS.g*Math.sin(th) - W.mu*m*PHYS.g*Math.cos(th) - 0.5*PHYS.rho*PHYS.cda*W.v*W.v;
+  W.v = Math.max(0, W.v + F/m*dt);
+  W.s = Math.min(c.len, W.s + W.v*dt);
+  if (rec && rec.world) {
+    const t = live.elapsed || 0;
+    if (t - W.lastRecT >= 1) { W.lastRecT = t; rec.world.pts.push([r1(t), r1(W.s)]); }
+    if (W.s >= c.len && !W.finished) { W.finished = true; rec.world.finishT = r1(t); toast(`I mål på ${c.name}! ${fmtTime(t)}`); }
+  }
+  if (c.cps && rec) {
+    const i = c.cps.filter(cp => W.s >= cp[1]).length - 1;
+    if (W.cpIdx == null) W.cpIdx = i; else if (i > W.cpIdx) { W.cpIdx = i; if (i > 0) toast(`Kontroll: ${c.cps[i][0]}`); }
+  }
+}
+setInterval(() => {
+  const now = performance.now(), dt = Math.min(0.25, (now - (W.lastTick || now))/1000); W.lastTick = now;
+  // Demopasset går i fyrfaldig hastighet, världen följer med
+  if (rec && W.course) worldStep(dt*(connState === 'demo' ? 4 : 1));
+}, 50);
+function worldStartPos(c){ return settings.world.start === 'resume' ? Math.min(c.len - 50, Math.max(0, (settings.world.pos || {})[c.id] || 0)) : 0; }
+function worldReset(){
+  const c = worldCourses.get(settings.world.course) || worldCourses.get(PRACTICE_ID);
+  W.course = c; W.s = c ? worldStartPos(c) : 0; W.v = 0; W.finished = false; W.ghost = null; W.cpIdx = null;
+}
+async function worldBegin(){
+  worldReset();
+  const c = W.course; if (!c || !rec) return;
+  W.s0 = W.s; W.lastRecT = -1;
+  try { const all = (await DB.all()).filter(x => x.summary && x.source !== 'demo' && x.summary.avgPower > 0).sort((a, b) => b.start.localeCompare(a.start)).slice(0, 5); if (all.length) W.autoRef = Math.round(mean(all.map(x => x.summary.avgPower))); } catch(e) {}
+  worldCalibrate();
+  if (!rec) return;
+  rec.world = { course:c.id, name:c.name, s0:r1(W.s0), pts:[], mu:+W.mu.toFixed(4), mass:worldMass() };
+  worldLoadGhost();
+  $('#worldCourse').disabled = true; $('#worldStart').disabled = true;
+}
+async function worldLoadGhost(){
+  W.ghost = null; if (!rec || !rec.world) return;
+  const id = rec.id, w = rec.world;
+  let all = []; try { all = await DB.all(); } catch(e) { return; }
+  if (!rec || rec.id !== id) return;
+  let best = null;
+  for (const x of all) {
+    const q = x.world;
+    if (!q || q.course !== w.course || Math.abs((q.s0 || 0) - w.s0) > 50 || !q.pts || q.pts.length < 10 || !sameSrc(x, rec) || x.draft) continue;
+    const bq = best && best.world;
+    if (!best || (q.finishT && (!bq.finishT || q.finishT < bq.finishT)) || (!q.finishT && !bq.finishT && q.s1 - q.s0 > bq.s1 - bq.s0)) best = x;
+  }
+  if (best) W.ghost = { date:best.start, t:best.world.pts.map(p => p[0]), s:best.world.pts.map(p => p[1]), finishT:best.world.finishT };
+}
+function worldEnd(s){
+  $('#worldCourse').disabled = false; $('#worldStart').disabled = false;
+  if (!s.world || !W.course || W.course.id !== s.world.course) return;
+  const c = W.course, w = s.world;
+  w.s1 = r1(W.s); w.dist = r1(W.s - w.s0); w.gain = Math.round(courseGain(c, w.s0, W.s));
+  const dur = w.pts.length ? w.pts[w.pts.length-1][0] - (w.pts[0][0] || 0) : 0;
+  w.speed = dur > 0 ? r1(w.dist/dur*3.6) : null;
+  settings.world.pos = settings.world.pos || {};
+  settings.world.pos[c.id] = W.finished ? 0 : Math.round(W.s);
+  saveSettings();
+  if (w.dist < 20) delete s.world;
+}
+
+/* ============================================================ Värld: 3D */
+let T = null;
+function worldLoadThree(){
+  return new Promise((res, rej) => {
+    if (window.THREE) return res();
+    const sc = document.createElement('script'); sc.src = THREE_URL;
+    sc.onload = () => res(); sc.onerror = () => rej(new Error('kunde inte ladda 3D-biblioteket, kontrollera uppkopplingen'));
+    document.head.appendChild(sc);
+  });
+}
+function hash2(x, z){ const v = Math.sin(x*127.1 + z*311.7)*43758.5453; return v - Math.floor(v); }
+function vnoise(x, z){
+  const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi, u = xf*xf*(3 - 2*xf), w = zf*zf*(3 - 2*zf);
+  const a = hash2(xi, zi), b = hash2(xi + 1, zi), c = hash2(xi, zi + 1), d = hash2(xi + 1, zi + 1);
+  return a + (b - a)*u + (c - a)*w + (a - b - c + d)*u*w;
+}
+// Terrängen planas ut nära spåret och blir kuperad längre ut
+function groundY(baseY, x, z, off){
+  const k = Math.min(1, Math.max(0, (Math.abs(off) - 4)/40));
+  return baseY - 0.12 + k*(vnoise(x/45, z/45)*10 + vnoise(x/12, z/12)*2.5 - 5) + Math.max(0, Math.abs(off) - 4)*0.05;
+}
+function mulberry(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0)/4294967296; }; }
+function initThree(){
+  const wrap = $('#worldCanvasWrap');
+  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  wrap.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x8fb4d6); scene.fog = new THREE.Fog(0xcfdce7, 160, 1100);
+  const camera = new THREE.PerspectiveCamera(58, 1, 0.3, 2500);
+  scene.add(new THREE.HemisphereLight(0xeef4ff, 0x7d8d9a, 0.62));
+  const sun = new THREE.DirectionalLight(0xfff1dc, 0.55); sun.position.set(-300, 400, 150); scene.add(sun);
+  const L = c => new THREE.MeshLambertMaterial({ color:c });
+  const M = { snow:L(0xf1f5f8), track:L(0xc9d5e0), groove:L(0x8a9eb2), spruce:L(0x2c573b), spruce2:L(0x3b6b47), trunk:L(0x5a4131) };
+  const geo = { cone:new THREE.ConeGeometry(1, 1, 7), trunk:new THREE.CylinderGeometry(0.12, 0.18, 1, 5) };
+  geo.cone.translate(0, 0.5, 0); geo.trunk.translate(0, 0.5, 0);
+  T = { renderer, scene, camera, M, geo, chunks:new Map(), courseId:null, camMode:0, camPos:null, last:performance.now(), hudT:0 };
+  T.skier = makeSkier(0x1f5fbf, 1); T.ghost = makeSkier(0xc8d2da, 0.5);
+  scene.add(T.skier.root); scene.add(T.ghost.root);
+  new ResizeObserver(worldResize).observe($('#worldStage'));
+  worldResize();
+}
+function worldResize(){
+  if (!T) return;
+  const st = $('#worldStage'), w = st.clientWidth, h = st.clientHeight; if (!w || !h) return;
+  T.renderer.setSize(w, h, false); T.camera.aspect = w/h; T.camera.updateProjectionMatrix();
+}
+// Banpunkt med index utanför banan förlängs rakt ut, så att terrängen fortsätter före start och efter mål
+function ptExt(c, i){
+  const n = c.pts.length;
+  if (i >= 0 && i < n) return c.pts[i];
+  const [a, b, k] = i < 0 ? [c.pts[0], c.pts[1], -i] : [c.pts[n-1], c.pts[n-2], i - n + 1];
+  return [a[0] + (a[0] - b[0])*k, a[1], a[2] + (a[2] - b[2])*k];
+}
+function buildChunk(c, k){
+  const per = WORLD.chunkLen/WORLD.step, i0 = k*per, i1 = i0 + per, np = c.pts.length;
+  if (i0 > np - 1 + 2*per || i1 < -2*per) return null;
+  const offs = [-75, -58, -44, -32, -22, -14, -8, -4, -2.2, 2.2, 4, 8, 14, 22, 32, 44, 58, 75];
+  const rows = i1 - i0 + 1, cols = offs.length, pos = new Float32Array(rows*cols*3), tpos = new Float32Array(rows*2*3), gpos = new Float32Array(rows*4*3);
+  const frame = [];
+  for (let r = 0; r < rows; r++) {
+    const i = i0 + r, p = ptExt(c, i), a = ptExt(c, i - 1), b = ptExt(c, i + 1);
+    let dx = b[0] - a[0], dz = b[2] - a[2]; const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+    const nx = -dz, nz = dx; frame.push([p, nx, nz]);
+    offs.forEach((o, q) => { const x = p[0] + nx*o, z = p[2] + nz*o, j = (r*cols + q)*3; pos[j] = x; pos[j+1] = groundY(p[1], x, z, o); pos[j+2] = z; });
+    [-1.6, 1.6].forEach((o, q) => { const j = (r*2 + q)*3; tpos[j] = p[0] + nx*o; tpos[j+1] = p[1] - 0.06; tpos[j+2] = p[2] + nz*o; });
+    [-0.62, -0.5, 0.5, 0.62].forEach((o, q) => { const j = (r*4 + q)*3; gpos[j] = p[0] + nx*o; gpos[j+1] = p[1] - 0.04; gpos[j+2] = p[2] + nz*o; });
+  }
+  const grid = (arr, cs, pairs) => {
+    const g = new THREE.BufferGeometry(), idx = [];
+    for (let r = 0; r < rows - 1; r++) for (const [q0, q1] of pairs) { const a = r*cs + q0, b = r*cs + q1, d = (r + 1)*cs + q0, e = (r + 1)*cs + q1; idx.push(a, b, d, b, e, d); }
+    g.setAttribute('position', new THREE.BufferAttribute(arr, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+  };
+  const group = new THREE.Group();
+  group.add(new THREE.Mesh(grid(pos, cols, offs.slice(0, -1).map((_, q) => [q, q + 1])), T.M.snow));
+  group.add(new THREE.Mesh(grid(tpos, 2, [[0, 1]]), T.M.track));
+  group.add(new THREE.Mesh(grid(gpos, 4, [[0, 1], [2, 3]]), T.M.groove));
+  const rnd = mulberry(k*9973 + 17), n = rows*4, dummy = new THREE.Object3D();
+  const cones = [new THREE.InstancedMesh(T.geo.cone, T.M.spruce, n), new THREE.InstancedMesh(T.geo.cone, T.M.spruce2, n)], trunks = new THREE.InstancedMesh(T.geo.trunk, T.M.trunk, n);
+  for (let j = 0; j < n; j++) {
+    const [p, nx, nz] = frame[Math.floor(rnd()*rows)], off = (rnd() < 0.5 ? -1 : 1)*(9 + rnd()*62);
+    const x = p[0] + nx*off + (rnd() - 0.5)*8, z = p[2] + nz*off + (rnd() - 0.5)*8, y = groundY(p[1], x, z, off), h = 7 + rnd()*12;
+    dummy.position.set(x, y + 1.2, z); dummy.scale.set(h*0.27, h, h*0.27); dummy.rotation.y = rnd()*6.28; dummy.updateMatrix();
+    cones[j % 2].setMatrixAt(j, dummy.matrix);
+    cones[1 - j % 2].setMatrixAt(j, new THREE.Matrix4().makeScale(0, 0, 0));
+    dummy.position.set(x, y - 0.2, z); dummy.scale.set(1.2, 1.6, 1.2); dummy.updateMatrix(); trunks.setMatrixAt(j, dummy.matrix);
+  }
+  cones.forEach(m => group.add(m)); group.add(trunks);
+  return group;
+}
+function updateChunks(c, sd){
+  if (T.courseId !== c.id) { for (const g of T.chunks.values()) disposeChunk(g); T.chunks.clear(); T.courseId = c.id; T.camPos = null; }
+  const k0 = Math.max(-2, Math.floor((sd - WORLD.behind)/WORLD.chunkLen)), k1 = Math.min(Math.ceil(c.len/WORLD.chunkLen) + 1, Math.floor((sd + WORLD.ahead)/WORLD.chunkLen));
+  for (const [k, g] of T.chunks) if (k < k0 || k > k1) { disposeChunk(g); T.chunks.delete(k); }
+  let built = 0;
+  for (let k = k0; k <= k1 && built < 2; k++) if (!T.chunks.has(k)) { const g = buildChunk(c, k); if (g) { T.scene.add(g); T.chunks.set(k, g); built++; } }
+}
+function disposeChunk(g){
+  T.scene.remove(g);
+  g.traverse(o => { if (o.geometry && o.geometry !== T.geo.cone && o.geometry !== T.geo.trunk) o.geometry.dispose(); });
+}
+
+/* ============================================================ Värld: åkaren */
+function makeSkier(color, op){
+  const mk = c => new THREE.MeshLambertMaterial({ color:c, transparent: op < 1, opacity: op });
+  const body = mk(color), dark = mk(0x1d262e), skin = mk(0xe6c1a4), hatM = mk(0xd23b2a);
+  const root = new THREE.Group(), add = (parent, g, m, x, y, z) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); parent.add(o); return o; };
+  const skiG = new THREE.BoxGeometry(0.07, 0.03, 1.95), legG = new THREE.CylinderGeometry(0.075, 0.06, 0.92, 6);
+  [-0.14, 0.14].forEach(x => { add(root, skiG, dark, x, 0.02, -0.15); add(root, legG, dark, x, 0.49, 0); });
+  const hip = new THREE.Group(); hip.position.set(0, 0.95, 0); root.add(hip);
+  add(hip, new THREE.CylinderGeometry(0.17, 0.14, 0.62, 8), body, 0, 0.31, 0);
+  add(hip, new THREE.SphereGeometry(0.115, 10, 8), skin, 0, 0.76, 0);
+  add(hip, new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI*2, 0, Math.PI/2), hatM, 0, 0.79, 0);
+  const arms = [-0.22, 0.22].map(x => {
+    const sh = new THREE.Group(); sh.position.set(x, 0.56, 0); hip.add(sh);
+    add(sh, new THREE.CylinderGeometry(0.05, 0.045, 0.6, 6), body, 0, -0.3, 0);
+    const hand = new THREE.Group(); hand.position.y = -0.6; sh.add(hand);
+    add(hand, new THREE.CylinderGeometry(0.012, 0.012, 1.45, 5), dark, 0, -0.62, 0);
+    return { sh, hand };
+  });
+  return { root, hip, arms };
+}
+// Nyckellägen i världsvinklar (radianer kring x-axeln, positivt = framåt för armar och stavar)
+const POSES = [
+  { at:0.00, torso:-0.22, arm:1.75, pole:-0.28, drop:0.00 },
+  { at:0.25, torso:-0.80, arm:0.25, pole:-0.55, drop:0.07 },
+  { at:0.50, torso:-0.95, arm:-0.75, pole:-1.25, drop:0.09 },
+  { at:1.00, torso:-0.22, arm:1.75, pole:-0.28, drop:0.00 }
+];
+function poseSkier(sk, ph){
+  let a = POSES[0], b = POSES[1];
+  for (let i = 0; i < POSES.length - 1; i++) if (ph >= POSES[i].at && ph <= POSES[i+1].at) { a = POSES[i]; b = POSES[i+1]; break; }
+  const t0 = (ph - a.at)/Math.max(1e-6, b.at - a.at), t = t0*t0*(3 - 2*t0), L = k => a[k] + (b[k] - a[k])*t;
+  const torso = L('torso'), arm = L('arm'), pole = L('pole');
+  sk.hip.rotation.x = torso; sk.hip.position.y = 0.95 - L('drop');
+  sk.arms.forEach(({ sh, hand }) => { sh.rotation.x = arm - torso; hand.rotation.x = pole - arm; });
+}
+// Animationen startar när PM5 rapporterar att draget börjar; annars när ett nytt drag registreras
+const ANIM = { state:'idle', t0:0, dur:0.45, recDur:1, lastSS:null, lastCnt:null, ssSeen:0 };
+function animPhase(now){
+  const ss = live.strokeState, cnt = live.strokeCount;
+  const drive = Math.min(1.2, Math.max(0.25, live.driveTime || 0.45)), recov = Math.min(3, Math.max(0.4, live.recoveryTime || 1));
+  const startDrive = () => { ANIM.state = 'drive'; ANIM.t0 = now; ANIM.dur = drive; ANIM.recDur = recov; };
+  if (ss !== ANIM.lastSS && ANIM.lastSS != null) { ANIM.ssSeen = now; if (ss === 2) startDrive(); }
+  else if (cnt != null && cnt !== ANIM.lastCnt && ANIM.lastCnt != null && now - ANIM.ssSeen > 5000 && ANIM.state !== 'drive') startDrive();
+  ANIM.lastSS = ss; ANIM.lastCnt = cnt;
+  const el = (now - ANIM.t0)/1000;
+  if (ANIM.state === 'drive') { if (el < ANIM.dur) return 0.5*el/ANIM.dur; ANIM.state = 'rec'; ANIM.t0 = now; return 0.5; }
+  if (ANIM.state === 'rec') { if (el < ANIM.recDur) return 0.5 + 0.5*el/ANIM.recDur; ANIM.state = 'idle'; }
+  return 0;
+}
+function placeSkier(sk, c, sd){
+  const p = courseAt(c, sd), d = courseDir(c, sd), gr = courseGrade(c, sd);
+  sk.root.position.set(p.x, p.y, p.z);
+  sk.root.rotation.set(Math.atan(gr), Math.atan2(-d.dx, -d.dz), 0, 'YXZ');
+  return { p, d };
+}
+
+/* ============================================================ Värld: vy, kamera och HUD */
+const CAMS = ['bakom', 'sidan', 'ovanifrån'];
+async function worldEnter(){
+  const msg = $('#worldMsg');
+  if (!T) {
+    msg.textContent = 'Laddar 3D-världen…'; msg.classList.remove('hidden');
+    try { await worldLoadThree(); initThree(); } catch(e) { msg.textContent = 'Värld-vyn kunde inte startas: ' + e.message; return; }
+  }
+  if (!rec) worldReset();
+  worldResize();
+  if (!T.raf) T.raf = requestAnimationFrame(worldFrame);
+}
+function worldFrame(now){
+  if (currentView !== 'world' || !T) { if (T) T.raf = 0; return; }
+  T.raf = requestAnimationFrame(worldFrame);
+  const c = W.course; if (!c) return;
+  const dt = Math.min(0.1, (now - T.last)/1000); T.last = now;
+  updateChunks(c, W.s);
+  const { p, d } = placeSkier(T.skier, c, W.s);
+  poseSkier(T.skier, rec ? animPhase(now) : 0);
+  const gs = W.ghost && rec ? interp(W.ghost.t, W.ghost.s, live.elapsed || 0) : null;
+  T.ghost.root.visible = gs != null;
+  if (gs != null) { placeSkier(T.ghost, c, gs); poseSkier(T.ghost, ((now/1000)*0.62) % 1); }
+  // Kamera
+  const mode = CAMS[T.camMode], up = new THREE.Vector3(0, 1, 0);
+  let want;
+  if (mode === 'sidan') want = new THREE.Vector3(p.x - d.dz*9 - d.dx*2, p.y + 2.2, p.z + d.dx*9 - d.dz*2);
+  else if (mode === 'ovanifrån') want = new THREE.Vector3(p.x - d.dx*14, p.y + 22, p.z - d.dz*14);
+  else { const back = W.s >= 6.5 ? courseAt(c, W.s - 6.5) : { x:p.x - d.dx*6.5, y:p.y, z:p.z - d.dz*6.5 }; want = new THREE.Vector3(back.x, Math.max(back.y, p.y) + 2.6, back.z); }
+  if (!T.camPos) T.camPos = want.clone(); else T.camPos.lerp(want, 1 - Math.exp(-dt*3));
+  T.camera.position.copy(T.camPos);
+  const look = courseAt(c, Math.min(c.len, W.s + (mode === 'bakom' ? 10 : 2)));
+  T.camera.lookAt(look.x, look.y + (mode === 'bakom' ? 1.2 : 1.0), look.z);
+  T.renderer.render(T.scene, T.camera);
+  if (now - T.hudT > 250) { T.hudT = now; renderHUD(); }
+}
+function renderHUD(){
+  const c = W.course; if (!c) return;
+  const gr = courseGrade(c, W.s)*100, hr = getHr(), cps = c.cps || [];
+  const next = cps.find(cp => cp[1] > W.s + 1);
+  setHTML($('#hudTL'), `<div class="name">${esc(c.name)}</div><div class="sub">${fmtKm(W.s)} av ${fmtKm(c.len)} km${next ? `, ${fmtKm(next[1] - W.s)} km till ${esc(next[0])}` : ''}</div>`);
+  setHTML($('#hudTR'), `<div><div class="k">Fart</div><div class="v">${fmtNum1(W.v*3.6)}<span class="u">km/h</span></div></div><div><div class="k">Lutning</div><div class="v">${signedNum(gr, 1)}<span class="u">%</span></div></div>`);
+  const fresh = live.powerAt && Date.now() - live.powerAt < 3000;
+  setHTML($('#hudBL'), `<div><div class="k">Watt</div><div class="v">${fresh && live.power ? live.power : '–'}</div></div><div><div class="k">Takt</div><div class="v">${live.spm || '–'}</div></div><div><div class="k">Puls</div><div class="v">${hr || '–'}</div></div><div><div class="k">Tid</div><div class="v">${rec ? fmtClock(live.elapsed) : '–'}</div></div>`);
+  let br = '';
+  if (W.ghost && rec) {
+    const gs = interp(W.ghost.t, W.ghost.s, live.elapsed || 0), gap = W.s - gs;
+    br = `<div class="k">Mot spökåkaren</div><div class="v ${gap >= 0 ? 'ahead' : 'behind'}">${gap >= 0 ? '+' : '−'}${fmtInt(Math.abs(gap))}<span class="u">m</span></div><div class="k">${esc(fmtDateShort(W.ghost.date))}</div>`;
+  } else if (rec) br = '<div class="k">Spökåkare</div><div class="k">inget tidigare åk härifrån</div>';
+  setHTML($('#hudBR'), br);
+  $('#hudBR').classList.toggle('hidden', !br);
+  const msg = $('#worldMsg');
+  if (!rec) { msg.innerHTML = `<b>${esc(c.name)}</b><br>Starta ett pass på PM5, eller ett demopass under Bas, så börjar du åka${W.s > 0 ? ` från ${fmtKm(W.s)} km` : ''}.${c.hasEle === false ? '<br>Filen saknade höjddata, så banan är platt.' : ''}`; msg.classList.remove('hidden'); }
+  else if (W.finished) { msg.innerHTML = `<b>I mål!</b><br>${esc(c.name)} på ${fmtTime(rec.world.finishT)}`; msg.classList.remove('hidden'); }
+  else msg.classList.add('hidden');
+  drawProfile();
+}
+function drawProfile(){
+  const r = setupCanvas($('#worldProfile')); if (!r) return;
+  const { ctx, W:w, H:h } = r, c = W.course, n = Math.max(2, Math.floor(w)), span = (c.maxY - c.minY) || 1;
+  const X = sd => sd/c.len*w, Y = y => h - 3 - (y - c.minY)/span*(h - 8);
+  ctx.beginPath(); ctx.moveTo(0, h);
+  for (let i = 0; i <= n; i++) { const sd = c.len*i/n; ctx.lineTo(X(sd), Y(courseAt(c, sd).y)); }
+  ctx.lineTo(w, h); ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = '10px Barlow, system-ui, sans-serif';
+  for (const cp of (c.cps || []).slice(1, -1)) { ctx.fillRect(X(cp[1]), 0, 1, h); }
+  if (rec) { ctx.fillStyle = '#7be0a6'; ctx.fillRect(X(W.s0), h - 3, Math.max(1, X(W.s) - X(W.s0)), 3); }
+  if (W.ghost && rec) { const gs = interp(W.ghost.t, W.ghost.s, live.elapsed || 0); ctx.fillStyle = '#c8d2da'; ctx.beginPath(); ctx.arc(X(gs), Y(courseAt(c, gs).y), 4, 0, 6.3); ctx.fill(); }
+  ctx.fillStyle = '#6aa8ff'; ctx.beginPath(); ctx.arc(X(W.s), Y(courseAt(c, W.s).y), 5, 0, 6.3); ctx.fill();
+}
+function worldBind(){
+  $('#worldCourse').onchange = e => { settings.world.course = e.target.value; saveSettings(); worldFillSelect(); if (!rec) worldReset(); };
+  $('#worldStart').onchange = e => { settings.world.start = e.target.value; saveSettings(); if (!rec) worldReset(); };
+  $('#btnGpx').onclick = () => $('#fileGpx').click();
+  $('#fileGpx').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try {
+      const c = parseGPX(await f.text(), f.name.replace(/\.gpx$/i, ''));
+      await DB.coursePut(c); worldCourses.set(c.id, c); settings.world.course = c.id; saveSettings(); worldFillSelect(); if (!rec) worldReset();
+      toast(`${c.name} importerad: ${fmtKm(c.len)} km, ${Math.round(c.gain)} höjdmeter${c.cps ? ', med Vasaloppets kontroller' : ''}`);
+    } catch(err) { toast('Importen misslyckades: ' + err.message); }
+  };
+  $('#btnDelCourse').onclick = async () => {
+    const c = worldCourses.get(settings.world.course); if (!c || c.builtin || rec) return;
+    if (!confirm(`Ta bort banan ${c.name}? Dina pass påverkas inte.`)) return;
+    await DB.courseDel(c.id); worldCourses.delete(c.id); settings.world.course = PRACTICE_ID; saveSettings(); worldFillSelect(); worldReset();
+  };
+  $('#btnCam').onclick = () => { if (!T) return; T.camMode = (T.camMode + 1) % CAMS.length; T.camPos = null; $('#btnCam').textContent = 'Kamera: ' + CAMS[T.camMode]; };
+  $('#btnFull').onclick = () => { const st = $('#worldStage'); if (document.fullscreenElement) document.exitFullscreen(); else if (st.requestFullscreen) st.requestFullscreen().catch(() => toast('Helskärm stöds inte här')); };
+}
+function worldHTML(s){
+  const w = s.world; if (!w) return '';
+  return `<div class="card"><h3>Värld: ${esc(w.name)}</h3><div class="kv">${nTile('Distans', `${fmtKm(w.dist)} km`, `från ${fmtKm(w.s0)} km`)}${nTile('Höjdmeter', `${w.gain ?? '–'} m`, 'uppför')}${nTile('Snittfart', w.speed ? `${fmtNum1(w.speed)} km/h` : '–', 'i världen')}${nTile('Mål', w.finishT ? fmtTime(w.finishT) : '–', w.finishT ? 'i mål' : 'ej i mål')}</div></div>`;
+}
+function worldMd(s){
+  const w = s.world; if (!w) return [];
+  return ['', '## Värld', mdTable(['Mått', 'Värde'], [['Bana', w.name], ['Sträcka', `${fmtKm(w.dist)} km, från ${fmtKm(w.s0)} till ${fmtKm(w.s1)} km`], ['Höjdmeter uppför', w.gain], ['Snittfart i världen', w.speed ? `${fmtNum1(w.speed)} km/h` : null], ['Måltid', w.finishT ? fmtTime(w.finishT) : 'ej i mål'], ['Fysik', `vikt ${w.mass} kg, friktion μ ${String(w.mu).replace('.', ',')}, luftmotstånd CdA 0,5 m²`]])];
+}
+
 /* ============================================================ Rendering */
 let dirty = false;
 function markDirty(){ if (!dirty) { dirty = true; setTimeout(() => { dirty = false; if (currentView==='live') renderLive(); }, 200); } }
@@ -1923,6 +2409,7 @@ function summaryHTML(s, ctx){
     </div>
   </div>
   ${goalHTML(s)}
+  ${worldHTML(s)}
   ${loadHTML(s)}
   <div class="card"><h3>Effektkurva</h3><canvas class="chart" data-chart="mmp"></canvas>
     <div class="legend"><span><i style="background:var(--power)"></i>Detta pass</span><span><i style="background:var(--muted)"></i>Personbästa före passet</span></div>
@@ -2119,7 +2606,7 @@ async function buildPassFile(s){
       ['Meter per pulsslag', fmtMpb(m.mpb), `Distans delat med antal pulsslag. Räknas bara på minuter efter ${EFF.warmup/60} minuters uppvärmning, med minst ${EFF.minP} W, puls och högst 15 % effektändring mot minuten före (${(m.effMin||[]).length} minuter)`],
       ['Effektivitet mot historiken', m.eff && m.eff.index != null ? fmtPct(m.eff.index) : null, `Snitt per minut av meter per pulsslag jämfört med medianen för mina tidigare minuter vid samma effekt (±10 %). Inom ±${effBand()} % räknas som i nivå`]
     ]),
-    ...goalMd(s), ...zonesMd(s), ...mmpMd(s, all), ...courseMd(s, all), ...nerdMd(s, all),
+    ...goalMd(s), ...zonesMd(s), ...mmpMd(s, all), ...courseMd(s, all), ...worldMd(s), ...nerdMd(s, all),
     '', '## Per minut',
     mdTable(['Minut','Watt','Takt (spm)','Puls','Tempo /500 m','m/slag'], m.perMin.map(x => [x.min, x.p, x.spm, x.hr, fmtPace(x.pace), x.mpb != null ? fmtMpb(x.mpb) : null])),
     ...(splits.length ? ['', '## Splittar', mdTable(['Nr','Tid','Meter','Tempo /500 m','Watt','Takt','Puls'],
@@ -2347,10 +2834,11 @@ function simSummary(S){
 let currentView = 'live';
 function show(view){
   currentView = view;
-  ['live','nerd','history','settings'].forEach(v => $('#view-'+v).classList.toggle('hidden', v !== view));
+  ['live','nerd','world','history','settings'].forEach(v => $('#view-'+v).classList.toggle('hidden', v !== view));
   document.querySelectorAll('nav.bottom button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   if (view === 'history') renderHistory();
   if (view === 'nerd') { renderNerd(true); if ($('#logCard').open) renderLog(); }
+  if (view === 'world') worldEnter();
   if (view === 'live') { renderLive(); drawLiveChart(); drawForce(); trackT = 0; renderTrack(); renderZoneLive(); }
   window.scrollTo(0,0);
 }
@@ -2418,11 +2906,13 @@ window.addEventListener('resize', () => { if (currentView === 'live') { drawLive
   };
   const numSet = (id, key) => { $(id).value = settings[key] ?? '';
     $(id).onchange = e => { settings[key] = String(e.target.value).replace(',', '.').trim(); saveSettings(); if (currentView === 'nerd') renderNerd(true); }; };
+  numSet('#setWeight', 'weight'); numSet('#setWorldRefW', 'worldRefW');
   numSet('#setRestHr', 'restHr'); numSet('#setCp', 'cp'); numSet('#setWp', 'wprime'); numSet('#setRefW', 'refW');
   $('#setSex').value = settings.sex; $('#setSex').onchange = e => { settings.sex = e.target.value; saveSettings(); };
   $('#setLoadSrc').value = settings.loadSrc; $('#setLoadSrc').onchange = e => { settings.loadSrc = e.target.value; saveSettings(); };
   $('#nerdPass').onchange = e => { nerdSelWanted = e.target.value; renderNerd(true); };
   $('#logCard').addEventListener('toggle', () => { if ($('#logCard').open) renderLog(); });
+  worldBind(); await worldLoadCourses();
   setConn('none'); show('live'); renderEffLive();
 })();
 </script>
