@@ -209,6 +209,13 @@ details.card summary{cursor:pointer;list-style:revert}
 .worldbar .wsel{flex:1 1 200px;min-width:0}
 .worldbar label{margin-top:0}
 .worldbar .btnrow{margin-top:0}
+.wxgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 12px}
+.wxgrid label{margin-top:0}
+.wxpanel{padding:10px 14px}
+.chk{display:inline-flex;align-items:center;gap:8px;margin:0;font-weight:500}
+.chk input{width:auto}
+@media (max-width:800px){ .wxgrid{grid-template-columns:1fr 1fr} }
+#view-world:has(#wxPanel:not(.hidden)) #worldStage{height:calc(100vh - 380px)}
 #worldStage{position:relative;height:calc(100vh - 230px);min-height:340px;border-radius:12px;overflow:hidden;background:#bfd4e6}
 #worldStage:fullscreen{height:100vh;border-radius:0}
 #worldCanvasWrap,#worldCanvasWrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -345,11 +352,25 @@ details.card summary{cursor:pointer;list-style:revert}
       <div class="wsel"><label for="worldStart">Start</label><select id="worldStart"><option value="start">Från start</option><option value="resume">Fortsätt där jag slutade</option></select></div>
       <div class="btnrow">
         <button class="btn" id="btnGpx">Importera GPX</button>
+        <button class="btn" id="btnWx">Väder och före</button>
         <button class="btn" id="btnCam">Kamera: bakom</button>
         <button class="btn" id="btnFull">Helskärm</button>
         <button class="btn danger" id="btnDelCourse">Ta bort banan</button>
       </div>
       <input type="file" id="fileGpx" accept=".gpx,application/gpx+xml,application/xml,text/xml" class="hidden">
+    </div>
+    <div class="card wxpanel hidden" id="wxPanel">
+      <div class="wxgrid">
+        <div><label for="wxSky">Väder</label><select id="wxSky"></select></div>
+        <div><label for="wxFore">Före</label><select id="wxFore"></select></div>
+        <div><label for="wxTemp">Temperatur (°C)</label><input id="wxTemp" type="number" inputmode="numeric" min="-35" max="15" step="1"></div>
+        <div><label for="wxGoal">Måltid för hela banan (h:mm)</label><input id="wxGoal" type="text" inputmode="numeric" placeholder="t.ex. 6:00"></div>
+      </div>
+      <div class="btnrow" style="align-items:center">
+        <button class="btn" id="btnWxRandom">Slumpa dagens förhållanden</button>
+        <label class="chk"><input type="checkbox" id="wxSunBonus"> Solbonus +3 % (spelinslag, inte fysik)</label>
+      </div>
+      <p class="small" id="wxProg" style="margin:10px 0 0"></p>
     </div>
     <div id="worldStage">
       <div id="worldCanvasWrap"></div>
@@ -541,7 +562,8 @@ function smooth(a, k){
 /* ============================================================ Inställningar */
 const DEFAULTS = { rate:2, maxHr:'', about:'', effBand:3, target:{ mode:'auto', dist:5000, time:30 }, course:null,
   restHr:'', sex:'m', loadSrc:'trimp', cp:'', wprime:'', refW:'',
-  weight:'', worldRefW:'', world:{ course:'ovningsbanan', start:'start', pos:{} } };
+  weight:'', worldRefW:'', world:{ course:'ovningsbanan', start:'start', pos:{} },
+  weather:{ sky:'sol', fore:'perfekt', temp:-6, sunBonus:true, goal:'' } };
 let settings = (() => { try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('skierg.settings') || '{}') }; } catch(e) { return { ...DEFAULTS }; } })();
 // Rensa bort API-nyckel från tidigare version
 if ('apiKey' in settings || 'model' in settings) { delete settings.apiKey; delete settings.model; try { localStorage.setItem('skierg.settings', JSON.stringify(settings)); } catch(e) {} }
@@ -2037,8 +2059,9 @@ function worldCalibrate(){
 function worldStep(dt){
   const c = W.course; if (!c || W.finished) return;
   const m = worldMass(), fresh = live.powerAt && Date.now() - live.powerAt < 3000 && ACTIVE_STATES.has(live.workoutState);
-  const P = fresh ? (live.power || 0) : 0, th = Math.atan(courseGrade(c, W.s));
-  const F = P/Math.max(W.v, 1) - m*PHYS.g*Math.sin(th) - W.mu*m*PHYS.g*Math.cos(th) - 0.5*PHYS.rho*PHYS.cda*W.v*W.v;
+  const cond = worldCond(rec ? (live.elapsed || 0)/60 : 0);
+  const P = (fresh ? (live.power || 0) : 0)*cond.powMul, th = Math.atan(courseGrade(c, W.s)), mu = W.mu*cond.muMul;
+  const F = P/Math.max(W.v, 1) - m*PHYS.g*Math.sin(th) - mu*m*PHYS.g*Math.cos(th) - 0.5*cond.rho*PHYS.cda*W.v*W.v;
   W.v = Math.max(0, W.v + F/m*dt);
   W.s = Math.min(c.len, W.s + W.v*dt);
   if (rec && rec.world) {
@@ -2068,7 +2091,7 @@ async function worldBegin(){
   try { const all = (await DB.all()).filter(x => x.summary && x.source !== 'demo' && x.summary.avgPower > 0).sort((a, b) => b.start.localeCompare(a.start)).slice(0, 5); if (all.length) W.autoRef = Math.round(mean(all.map(x => x.summary.avgPower))); } catch(e) {}
   worldCalibrate();
   if (!rec) return;
-  rec.world = { course:c.id, name:c.name, s0:r1(W.s0), pts:[], mu:+W.mu.toFixed(4), mass:worldMass() };
+  rec.world = { course:c.id, name:c.name, s0:r1(W.s0), pts:[], mu:+W.mu.toFixed(4), mass:worldMass(), wx:{ ...settings.weather } };
   worldLoadGhost();
   $('#worldCourse').disabled = true; $('#worldStart').disabled = true;
 }
@@ -2128,14 +2151,14 @@ function initThree(){
   wrap.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x8fb4d6); scene.fog = new THREE.Fog(0xcfdce7, 160, 1100);
-  const camera = new THREE.PerspectiveCamera(58, 1, 0.3, 2500);
-  scene.add(new THREE.HemisphereLight(0xeef4ff, 0x7d8d9a, 0.62));
+  const camera = new THREE.PerspectiveCamera(58, 1, 0.12, 2500);
+  const hemi = new THREE.HemisphereLight(0xeef4ff, 0x7d8d9a, 0.62); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff1dc, 0.55); sun.position.set(-300, 400, 150); scene.add(sun);
   const L = c => new THREE.MeshLambertMaterial({ color:c });
   const M = { snow:L(0xf1f5f8), track:L(0xc9d5e0), groove:L(0x8a9eb2), spruce:L(0x2c573b), spruce2:L(0x3b6b47), trunk:L(0x5a4131) };
   const geo = { cone:new THREE.ConeGeometry(1, 1, 7), trunk:new THREE.CylinderGeometry(0.12, 0.18, 1, 5) };
   geo.cone.translate(0, 0.5, 0); geo.trunk.translate(0, 0.5, 0);
-  T = { renderer, scene, camera, M, geo, chunks:new Map(), courseId:null, camMode:0, camPos:null, last:performance.now(), hudT:0 };
+  T = { renderer, scene, camera, M, geo, hemi, sun, chunks:new Map(), courseId:null, camMode:0, camPos:null, last:performance.now(), hudT:0, precip:null, wxKey:null };
   T.skier = makeSkier(0x1f5fbf, 1); T.ghost = makeSkier(0xc8d2da, 0.5);
   scene.add(T.skier.root); scene.add(T.ghost.root);
   new ResizeObserver(worldResize).observe($('#worldStage'));
@@ -2209,17 +2232,19 @@ function makeSkier(color, op){
   const skiG = new THREE.BoxGeometry(0.07, 0.03, 1.95), legG = new THREE.CylinderGeometry(0.075, 0.06, 0.92, 6);
   [-0.14, 0.14].forEach(x => { add(root, skiG, dark, x, 0.02, -0.15); add(root, legG, dark, x, 0.49, 0); });
   const hip = new THREE.Group(); hip.position.set(0, 0.95, 0); root.add(hip);
-  add(hip, new THREE.CylinderGeometry(0.17, 0.14, 0.62, 8), body, 0, 0.31, 0);
-  add(hip, new THREE.SphereGeometry(0.115, 10, 8), skin, 0, 0.76, 0);
-  add(hip, new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI*2, 0, Math.PI/2), hatM, 0, 0.79, 0);
+  const torsoM = add(hip, new THREE.CylinderGeometry(0.17, 0.14, 0.62, 8), body, 0, 0.31, 0);
+  const head = add(hip, new THREE.SphereGeometry(0.115, 10, 8), skin, 0, 0.76, 0);
+  const hat = add(hip, new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI*2, 0, Math.PI/2), hatM, 0, 0.79, 0);
+  const fpHide = [torsoM, head, hat];
   const arms = [-0.22, 0.22].map(x => {
     const sh = new THREE.Group(); sh.position.set(x, 0.56, 0); hip.add(sh);
-    add(sh, new THREE.CylinderGeometry(0.05, 0.045, 0.6, 6), body, 0, -0.3, 0);
+    fpHide.push(add(sh, new THREE.CylinderGeometry(0.05, 0.045, 0.6, 6), body, 0, -0.3, 0));
     const hand = new THREE.Group(); hand.position.y = -0.6; sh.add(hand);
+    add(hand, new THREE.SphereGeometry(0.036, 8, 6), dark, 0, 0, 0);
     add(hand, new THREE.CylinderGeometry(0.012, 0.012, 1.45, 5), dark, 0, -0.62, 0);
     return { sh, hand };
   });
-  return { root, hip, arms };
+  return { root, hip, arms, head, fpHide };
 }
 // Nyckellägen i världsvinklar (radianer kring x-axeln, positivt = framåt för armar och stavar)
 const POSES = [
@@ -2257,8 +2282,118 @@ function placeSkier(sk, c, sd){
   return { p, d };
 }
 
+/* ============================================================ Värld: väder och före */
+// Friktionsfaktorer relativt grundfriktionen, som är kalibrerad mot PM5 i perfekt före.
+// Ungefärliga värden inom det kända spannet μ ≈ 0,02 (isigt) till över 0,1 (blöt nysnö).
+const FORE = {
+  perfekt:   { n:'Perfekt kallt spår, runt −5°', mu:1.00, snow:0xf1f5f8, track:0xc9d5e0, groove:0x8a9eb2 },
+  skare:     { n:'Isigt efter tö och frost',     mu:0.65, snow:0xe8eef4, track:0xb6d0ea, groove:0x7f9cbc },
+  hardpack:  { n:'Hårt och kallt, under −10°',   mu:1.12, snow:0xf3f6f9, track:0xd2dce6, groove:0x93a6b8 },
+  kyla:      { n:'Sträng kyla, under −18°',      mu:1.35, snow:0xf6f8fb, track:0xdbe3ea, groove:0x9fb0c0 },
+  nysno:     { n:'Torr nysnö',                   mu:1.35, snow:0xffffff, track:0xe6ecf2, groove:0xb5c3d0 },
+  blotnysno: { n:'Tung, blöt nysnö',             mu:1.90, snow:0xeef1f3, track:0xd6dde3, groove:0xa8b4be },
+  slask:     { n:'Blött och slaskigt',           mu:1.55, snow:0xd8dee3, track:0xb3bfc9, groove:0x8696a3 }
+};
+const SKY = {
+  sol:      { n:'Sol',             bg:0x6ea6dc, fog:0xd5e4f0, near:200, far:1500, hemi:0.66, sun:0.8,  sunC:0xfff1d6 },
+  mulet:    { n:'Mulet',           bg:0xaeb9c4, fog:0xc3ccd4, near:120, far:900,  hemi:0.72, sun:0.22, sunC:0xe8eef4 },
+  sno:      { n:'Snöfall',         bg:0xbfc8d1, fog:0xcdd5dc, near:50,  far:480,  hemi:0.72, sun:0.18, sunC:0xe8eef4, snow:2600, acc:0.003 },
+  snostorm: { n:'Kraftigt snöfall',bg:0xc9d0d7, fog:0xd3d9df, near:20,  far:240,  hemi:0.72, sun:0.12, sunC:0xe8eef4, snow:7500, acc:0.008 },
+  regn:     { n:'Regn',            bg:0x8c98a3, fog:0x9aa5ae, near:60,  far:600,  hemi:0.55, sun:0.12, sunC:0xdde4ea, rain:3800 },
+  dimma:    { n:'Dimma',           bg:0xd9dfe4, fog:0xdfe4e8, near:8,   far:140,  hemi:0.72, sun:0.15, sunC:0xeef2f5 }
+};
+const WX_COMBOS = [
+  { sky:'sol', fore:'perfekt', temp:-6 }, { sky:'sol', fore:'skare', temp:-3 }, { sky:'mulet', fore:'hardpack', temp:-12 },
+  { sky:'sno', fore:'nysno', temp:-8 }, { sky:'snostorm', fore:'nysno', temp:-10 }, { sky:'sno', fore:'blotnysno', temp:0 },
+  { sky:'regn', fore:'slask', temp:3 }, { sky:'dimma', fore:'slask', temp:1 }, { sky:'sol', fore:'kyla', temp:-22 }, { sky:'mulet', fore:'skare', temp:-2 }
+];
+// Luftens densitet ur temperaturen: ρ = p/(R·T) vid normalt lufttryck
+const airRho = tC => 101325/(287.05*(273.15 + tC));
+function worldCond(minutes){
+  const w = settings.weather || {}, f = FORE[w.fore] || FORE.perfekt, sk = SKY[w.sky] || SKY.sol;
+  // Snöfall lägger nysnö i spåret: friktionen ökar gradvis under passet, högst 40 %
+  const acc = sk.acc ? Math.min(0.4, sk.acc*Math.max(0, minutes)) : 0;
+  return { muMul: f.mu*(1 + acc), acc, rho: airRho(Number(w.temp) || 0), powMul: w.sky === 'sol' && w.sunBonus ? 1.03 : 1 };
+}
+// Kvasistatisk prognos: farten löses ur effektbalansen för varje 10-metersbit, utan tröghet
+function courseTime(c, P, cond){
+  const m = worldMass(), a = 0.5*cond.rho*PHYS.cda, mu = W.mu*cond.muMul, Pe = P*cond.powMul;
+  let t = 0;
+  for (let i = 1; i < c.pts.length; i++) {
+    const A = c.pts[i-1], B = c.pts[i], dh = Math.hypot(B[0] - A[0], B[2] - A[2]) || WORLD.step, th = Math.atan((B[1] - A[1])/dh);
+    const F = m*PHYS.g*(Math.sin(th) + mu*Math.cos(th));
+    let lo = 0.05, hi = 18;
+    if (a*hi**3 + F*hi - Pe < 0) { t += WORLD.step/hi; continue; }
+    for (let k = 0; k < 26; k++) { const v = (lo + hi)/2; if (a*v**3 + F*v - Pe > 0) hi = v; else lo = v; }
+    t += WORLD.step/((lo + hi)/2);
+  }
+  return t;
+}
+function parseHM(txt){ const m = String(txt || '').trim().match(/^(\d+)[:.](\d{1,2})$/); return m ? (+m[1]*60 + +m[2])*60 : null; }
+function wxPrognosis(){
+  const el = $('#wxProg'), c = W.course; if (!el || !c || $('#wxPanel').classList.contains('hidden')) return;
+  worldCalibrate();
+  const ref = Math.round(worldRefW()), cond = worldCond(0), base = { muMul:1, acc:0, rho:airRho(-5), powMul:1 };
+  const t = courseTime(c, ref, cond), t0 = courseTime(c, ref, base);
+  let txt = `Hela ${esc(c.name)} (${fmtKm(c.len)} km) vid ${ref} W tar ungefär <b>${fmtClock(t)}</b> i det här föret, mot ${fmtClock(t0)} i perfekt före.`;
+  const goal = parseHM(settings.weather.goal);
+  if (goal) {
+    let lo = 20, hi = 900;
+    if (courseTime(c, hi, cond) > goal) txt += ` Måltiden ${esc(settings.weather.goal)} kräver över 900 W.`;
+    else if (courseTime(c, lo, cond) <= goal) txt += ` Måltiden ${esc(settings.weather.goal)} klaras redan med under 20 W.`;
+    else { for (let k = 0; k < 20; k++) { const P = (lo + hi)/2; if (courseTime(c, P, cond) > goal) lo = P; else hi = P; } txt += ` Måltiden ${esc(settings.weather.goal)} kräver ungefär <b>${Math.round(hi)} W</b> i snitt.`; }
+  }
+  const sk = SKY[settings.weather.sky];
+  if (sk.acc) txt += ` Snöfallet gör spåret trögare under passet, ungefär +${Math.round(sk.acc*3000)} % friktion efter en halvtimme, vilket inte ingår i prognosen.`;
+  el.innerHTML = txt + ' <span class="muted">Prognosen räknar med jämn effekt och bortser från farten du bär genom svackor.</span>';
+}
+// Himmel, ljus, markfärger och nederbörd sätts om bara när vädret eller föret ändras
+function applyWeather(){
+  const w = settings.weather, key = `${w.sky}|${w.fore}`;
+  if (!T || T.wxKey === key) return;
+  T.wxKey = key;
+  const sk = SKY[w.sky] || SKY.sol, f = FORE[w.fore] || FORE.perfekt;
+  T.scene.background.setHex(sk.bg); T.scene.fog.color.setHex(sk.fog); T.scene.fog.near = sk.near; T.scene.fog.far = sk.far;
+  T.hemi.intensity = sk.hemi; T.sun.intensity = sk.sun; T.sun.color.setHex(sk.sunC);
+  T.M.snow.color.setHex(f.snow); T.M.track.color.setHex(f.track); T.M.groove.color.setHex(f.groove);
+  if (T.precip) { T.scene.remove(T.precip.obj); T.precip.obj.geometry.dispose(); T.precip.obj.material.dispose(); T.precip = null; }
+  if (sk.snow || sk.rain) T.precip = makePrecip(sk.snow ? 'snow' : 'rain', sk.snow || sk.rain);
+}
+const PRECIP_BOX = { x:32, y:26, z:32 };
+function makePrecip(kind, n){
+  const B = PRECIP_BOX, cam = T.camera.position, vpd = kind === 'rain' ? 2 : 1, pos = new Float32Array(n*vpd*3), seed = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = cam.x + (Math.random()*2 - 1)*B.x, y = cam.y + Math.random()*B.y - 4, z = cam.z + (Math.random()*2 - 1)*B.z;
+    for (let v = 0; v < vpd; v++) { const j = (i*vpd + v)*3; pos[j] = x; pos[j+1] = y - v*0.5; pos[j+2] = z; }
+    seed[i] = Math.random()*6.28;
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const obj = kind === 'rain'
+    ? new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color:0xb4c6d4, transparent:true, opacity:0.55 }))
+    : new THREE.Points(g, new THREE.PointsMaterial({ color:0xffffff, size:0.1, transparent:true, opacity:0.92, depthWrite:false }));
+  obj.frustumCulled = false; T.scene.add(obj);
+  return { obj, kind, n, vpd, seed, t:0 };
+}
+// Flingorna ligger kvar i världen och wrappas runt kameran, så att du åker genom snöfallet
+function updatePrecip(dt){
+  const P = T.precip; if (!P) return;
+  const a = P.obj.geometry.attributes.position.array, cam = T.camera.position, B = PRECIP_BOX, rain = P.kind === 'rain', vy = rain ? 9 : 1.1;
+  P.t += dt;
+  for (let i = 0; i < P.n; i++) {
+    const j = i*P.vpd*3;
+    let x = a[j], y = a[j+1] - vy*dt, z = a[j+2];
+    if (!rain) { x += Math.sin(P.t*0.9 + P.seed[i])*0.35*dt; z += Math.cos(P.t*0.7 + P.seed[i])*0.25*dt; }
+    if (y < cam.y - 4) y += B.y;
+    if (x - cam.x > B.x) x -= 2*B.x; else if (cam.x - x > B.x) x += 2*B.x;
+    if (z - cam.z > B.z) z -= 2*B.z; else if (cam.z - z > B.z) z += 2*B.z;
+    if (y - cam.y > B.y) y -= B.y;
+    for (let v = 0; v < P.vpd; v++) { const k = j + v*3; a[k] = x; a[k+1] = y - v*0.5; a[k+2] = z; }
+  }
+  P.obj.geometry.attributes.position.needsUpdate = true;
+}
+
 /* ============================================================ Värld: vy, kamera och HUD */
-const CAMS = ['bakom', 'sidan', 'ovanifrån'];
+const CAMS = ['bakom', 'förstaperson', 'sidan', 'ovanifrån'];
 async function worldEnter(){
   const msg = $('#worldMsg');
   if (!T) {
@@ -2283,13 +2418,27 @@ function worldFrame(now){
   // Kamera
   const mode = CAMS[T.camMode], up = new THREE.Vector3(0, 1, 0);
   let want;
-  if (mode === 'sidan') want = new THREE.Vector3(p.x - d.dz*9 - d.dx*2, p.y + 2.2, p.z + d.dx*9 - d.dz*2);
+  T.skier.root.updateMatrixWorld(true);
+  T.skier.fpHide.forEach(o => { o.visible = mode !== 'förstaperson'; });
+  if (mode === 'förstaperson') {
+    // Halva huvudets rörelse: tydlig rytm i draget utan att bilden gungar för mycket
+    const hp = new THREE.Vector3(); T.skier.head.getWorldPosition(hp);
+    want = new THREE.Vector3(p.x + d.dx*0.05, p.y + 1.78, p.z + d.dz*0.05).lerp(hp, 0.5); want.x += d.dx*0.06; want.z += d.dz*0.06;
+  }
+  else if (mode === 'sidan') want = new THREE.Vector3(p.x - d.dz*9 - d.dx*2, p.y + 2.2, p.z + d.dx*9 - d.dz*2);
   else if (mode === 'ovanifrån') want = new THREE.Vector3(p.x - d.dx*14, p.y + 22, p.z - d.dz*14);
   else { const back = W.s >= 6.5 ? courseAt(c, W.s - 6.5) : { x:p.x - d.dx*6.5, y:p.y, z:p.z - d.dz*6.5 }; want = new THREE.Vector3(back.x, Math.max(back.y, p.y) + 2.6, back.z); }
-  if (!T.camPos) T.camPos = want.clone(); else T.camPos.lerp(want, 1 - Math.exp(-dt*3));
+  if (!T.camPos || mode === 'förstaperson') T.camPos = want.clone(); else T.camPos.lerp(want, 1 - Math.exp(-dt*3));
   T.camera.position.copy(T.camPos);
-  const look = courseAt(c, Math.min(c.len, W.s + (mode === 'bakom' ? 10 : 2)));
-  T.camera.lookAt(look.x, look.y + (mode === 'bakom' ? 1.2 : 1.0), look.z);
+  if (mode === 'förstaperson') {
+    // Blicken följer spåret framåt och nickar med när överkroppen fälls i draget
+    const ahead = courseAt(c, Math.min(c.len + 30, W.s + 18)), nod = -T.skier.hip.rotation.x;
+    T.camera.lookAt(ahead.x, ahead.y + 1.6 - nod*0.7, ahead.z);
+  } else {
+    const look = courseAt(c, Math.min(c.len, W.s + (mode === 'bakom' ? 10 : 2)));
+    T.camera.lookAt(look.x, look.y + (mode === 'bakom' ? 1.2 : 1.0), look.z);
+  }
+  applyWeather(); updatePrecip(dt);
   T.renderer.render(T.scene, T.camera);
   if (now - T.hudT > 250) { T.hudT = now; renderHUD(); }
 }
@@ -2297,7 +2446,10 @@ function renderHUD(){
   const c = W.course; if (!c) return;
   const gr = courseGrade(c, W.s)*100, hr = getHr(), cps = c.cps || [];
   const next = cps.find(cp => cp[1] > W.s + 1);
-  setHTML($('#hudTL'), `<div class="name">${esc(c.name)}</div><div class="sub">${fmtKm(W.s)} av ${fmtKm(c.len)} km${next ? `, ${fmtKm(next[1] - W.s)} km till ${esc(next[0])}` : ''}</div>`);
+  const wx = settings.weather, cnd = worldCond(rec ? (live.elapsed || 0)/60 : 0);
+  setHTML($('#hudTL'), `<div class="name">${esc(c.name)}</div><div class="sub">${fmtKm(W.s)} av ${fmtKm(c.len)} km${next ? `, ${fmtKm(next[1] - W.s)} km till ${esc(next[0])}` : ''}</div>
+    <div class="sub">${signedNum(Number(wx.temp) || 0, 0)} °C, ${esc(SKY[wx.sky].n.toLowerCase())}, ${esc(FORE[wx.fore].n.toLowerCase())}</div>
+    <div class="sub">friktion ×${fmt2(cnd.muMul)}${cnd.acc > 0.005 ? `, varav nysnö +${Math.round(cnd.acc*100)} %` : ''}${cnd.powMul > 1 ? ', solbonus +3 %' : ''}</div>`);
   setHTML($('#hudTR'), `<div><div class="k">Fart</div><div class="v">${fmtNum1(W.v*3.6)}<span class="u">km/h</span></div></div><div><div class="k">Lutning</div><div class="v">${signedNum(gr, 1)}<span class="u">%</span></div></div>`);
   const fresh = live.powerAt && Date.now() - live.powerAt < 3000;
   setHTML($('#hudBL'), `<div><div class="k">Watt</div><div class="v">${fresh && live.power ? live.power : '–'}</div></div><div><div class="k">Takt</div><div class="v">${live.spm || '–'}</div></div><div><div class="k">Puls</div><div class="v">${hr || '–'}</div></div><div><div class="k">Tid</div><div class="v">${rec ? fmtClock(live.elapsed) : '–'}</div></div>`);
@@ -2328,7 +2480,7 @@ function drawProfile(){
   ctx.fillStyle = '#6aa8ff'; ctx.beginPath(); ctx.arc(X(W.s), Y(courseAt(c, W.s).y), 5, 0, 6.3); ctx.fill();
 }
 function worldBind(){
-  $('#worldCourse').onchange = e => { settings.world.course = e.target.value; saveSettings(); worldFillSelect(); if (!rec) worldReset(); };
+  $('#worldCourse').onchange = e => { settings.world.course = e.target.value; saveSettings(); worldFillSelect(); if (!rec) worldReset(); wxPrognosis(); };
   $('#worldStart').onchange = e => { settings.world.start = e.target.value; saveSettings(); if (!rec) worldReset(); };
   $('#btnGpx').onclick = () => $('#fileGpx').click();
   $('#fileGpx').onchange = async e => {
@@ -2344,6 +2496,16 @@ function worldBind(){
     if (!confirm(`Ta bort banan ${c.name}? Dina pass påverkas inte.`)) return;
     await DB.courseDel(c.id); worldCourses.delete(c.id); settings.world.course = PRACTICE_ID; saveSettings(); worldFillSelect(); worldReset();
   };
+  $('#btnWx').onclick = () => { $('#wxPanel').classList.toggle('hidden'); worldResize(); wxPrognosis(); };
+  $('#wxSky').innerHTML = Object.entries(SKY).map(([k, v]) => `<option value="${k}">${v.n}</option>`).join('');
+  $('#wxFore').innerHTML = Object.entries(FORE).map(([k, v]) => `<option value="${k}">${v.n}</option>`).join('');
+  const wxUI = () => { const w = settings.weather; $('#wxSky').value = w.sky; $('#wxFore').value = w.fore; $('#wxTemp').value = w.temp; $('#wxSunBonus').checked = !!w.sunBonus; $('#wxGoal').value = w.goal || ''; };
+  const wxSave = () => {
+    settings.weather = { sky:$('#wxSky').value, fore:$('#wxFore').value, temp:Number($('#wxTemp').value) || 0, sunBonus:$('#wxSunBonus').checked, goal:$('#wxGoal').value.trim() };
+    saveSettings(); wxPrognosis(); if (rec && rec.world) rec.world.wx = { ...settings.weather };
+  };
+  wxUI(); ['#wxSky', '#wxFore', '#wxTemp', '#wxSunBonus', '#wxGoal'].forEach(id => $(id).onchange = wxSave);
+  $('#btnWxRandom').onclick = () => { const p = WX_COMBOS[Math.floor(Math.random()*WX_COMBOS.length)]; Object.assign(settings.weather, p); wxUI(); wxSave(); toast(`Dagens förhållanden: ${SKY[p.sky].n.toLowerCase()}, ${FORE[p.fore].n.toLowerCase()}, ${p.temp} °C`); };
   $('#btnCam').onclick = () => { if (!T) return; T.camMode = (T.camMode + 1) % CAMS.length; T.camPos = null; $('#btnCam').textContent = 'Kamera: ' + CAMS[T.camMode]; };
   $('#btnFull').onclick = () => { const st = $('#worldStage'); if (document.fullscreenElement) document.exitFullscreen(); else if (st.requestFullscreen) st.requestFullscreen().catch(() => toast('Helskärm stöds inte här')); };
 }
@@ -2353,7 +2515,7 @@ function worldHTML(s){
 }
 function worldMd(s){
   const w = s.world; if (!w) return [];
-  return ['', '## Värld', mdTable(['Mått', 'Värde'], [['Bana', w.name], ['Sträcka', `${fmtKm(w.dist)} km, från ${fmtKm(w.s0)} till ${fmtKm(w.s1)} km`], ['Höjdmeter uppför', w.gain], ['Snittfart i världen', w.speed ? `${fmtNum1(w.speed)} km/h` : null], ['Måltid', w.finishT ? fmtTime(w.finishT) : 'ej i mål'], ['Fysik', `vikt ${w.mass} kg, friktion μ ${String(w.mu).replace('.', ',')}, luftmotstånd CdA 0,5 m²`]])];
+  return ['', '## Värld', mdTable(['Mått', 'Värde'], [['Bana', w.name], ['Sträcka', `${fmtKm(w.dist)} km, från ${fmtKm(w.s0)} till ${fmtKm(w.s1)} km`], ['Höjdmeter uppför', w.gain], ['Snittfart i världen', w.speed ? `${fmtNum1(w.speed)} km/h` : null], ['Måltid', w.finishT ? fmtTime(w.finishT) : 'ej i mål'], ['Väder och före', w.wx ? `${w.wx.temp} °C, ${SKY[w.wx.sky].n.toLowerCase()}, ${FORE[w.wx.fore].n.toLowerCase()} (friktionsfaktor ${fmt2(FORE[w.wx.fore].mu)})` : null], ['Fysik', `vikt ${w.mass} kg, grundfriktion μ ${String(w.mu).replace('.', ',')}, luftmotstånd CdA 0,5 m²`]])];
 }
 
 /* ============================================================ Rendering */
